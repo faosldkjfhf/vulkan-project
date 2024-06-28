@@ -6,6 +6,8 @@ Engine::Engine()
   _vulkanProgram->initVulkan();
 }
 
+Engine::~Engine() {}
+
 void Engine::run() { loop(); }
 
 void Engine::loop() {

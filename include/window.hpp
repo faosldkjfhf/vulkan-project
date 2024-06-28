@@ -7,7 +7,7 @@ public:
   Window(const int &w, const int &h);
   ~Window();
 
-  GLFWwindow *getWindow();
+  inline GLFWwindow *getWindow() { return _window; }
 
 private:
   int _width;
