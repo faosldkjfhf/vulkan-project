@@ -1,6 +1,20 @@
-all:
-	bear -- g++ --std=c++20 `pkg-config --cflags glfw3` -I./include src/*.cpp -o prog -lvulkan `pkg-config --libs glfw3`
+IDIR := ./include
+ODIR := .
+OBJDIR := ./bin
+
+CC := g++
+CFLAGS := -std=c++20
+INCLUDES := -I./include
+LIBS := -lvulkan `pkg-config --libs --cflags glfw3`
+SOURCES := main.cpp engine.cpp vulkan_program.cpp window.cpp
+OBJECTS := $(addprefix $(OBJDIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
+
+prog: $(OBJECTS)
+	$(CC) $^ -o $@ $(LIBS)
+
+$(OBJDIR)/%.o: ./src/%.cpp
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 clean:
-	rm -f *.o
+	rm -f $(OBJDIR)/*.o
 	rm -f prog
