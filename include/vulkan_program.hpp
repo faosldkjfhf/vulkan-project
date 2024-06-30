@@ -6,6 +6,8 @@
 
 struct QueueFamilyIndices {
   int graphicsFamily = -1;
+
+  bool isComplete() { return graphicsFamily != -1; }
 };
 
 class VulkanProgram {
@@ -19,6 +21,8 @@ private:
   VkInstance _instance;
   VkDebugUtilsMessengerEXT _debugMessenger;
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
+  VkQueue _graphicsQueue;
+  VkDevice _device;
   const std::vector<const char *> _validationLayers = {
       "VK_LAYER_KHRONOS_validation",
   };
@@ -26,6 +30,8 @@ private:
   void createInstance();
   void setupDebugMessenger();
   void pickPhysicalDevice();
+  void createLogicalDevice();
+  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
 
   bool isDeviceSuitable(VkPhysicalDevice device);
 

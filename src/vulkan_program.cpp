@@ -4,6 +4,7 @@
 #include <iostream>
 
 VulkanProgram::~VulkanProgram() {
+  vkDestroyDevice(_device, nullptr);
   destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
   vkDestroyInstance(_instance, nullptr);
 }
@@ -12,6 +13,68 @@ void VulkanProgram::initVulkan() {
   createInstance();
   setupDebugMessenger();
   pickPhysicalDevice();
+  createLogicalDevice();
+}
+
+void VulkanProgram::createLogicalDevice() {
+  QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
+
+  VkDeviceQueueCreateInfo queueCreateInfo = {};
+  queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+  queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
+  queueCreateInfo.queueCount = 1;
+
+  float queuePriority = 1.0f;
+  queueCreateInfo.pQueuePriorities = &queuePriority;
+
+  VkPhysicalDeviceFeatures deviceFeatures = {};
+
+  VkDeviceCreateInfo createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+  createInfo.pQueueCreateInfos = &queueCreateInfo;
+  createInfo.queueCreateInfoCount = 1;
+  createInfo.pEnabledFeatures = &deviceFeatures;
+  createInfo.enabledLayerCount = _validationLayers.size();
+  createInfo.ppEnabledLayerNames = _validationLayers.data();
+
+  if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("Failed to create logical device");
+  }
+
+  vkGetDeviceQueue(_device, indices.graphicsFamily, 0, &_graphicsQueue);
+
+  std::cout << "DEBUG: logical device created" << std::endl;
+}
+
+QueueFamilyIndices VulkanProgram::findQueueFamilies(VkPhysicalDevice device) {
+  QueueFamilyIndices indices;
+
+  unsigned int queueFamilyCount = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, 0);
+
+  std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount,
+                                           queueFamilies.data());
+
+  int i = 0;
+  for (const auto &queueFamily : queueFamilies) {
+    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+      indices.graphicsFamily = i;
+    }
+
+    if (indices.isComplete()) {
+      break;
+    }
+
+    i++;
+  }
+
+  if (indices.isComplete()) {
+    std::cout << "DEBUG: queue family found" << std::endl;
+  }
+
+  return indices;
 }
 
 void VulkanProgram::populateDebugMessengerCreateInfo(
@@ -36,6 +99,8 @@ void VulkanProgram::setupDebugMessenger() {
                                    &_debugMessenger) != VK_SUCCESS) {
     throw std::runtime_error("Couldn't create debug messenger");
   }
+
+  std::cout << "DEBUG: debug setup successfully" << std::endl;
 }
 
 void VulkanProgram::createInstance() {
@@ -69,6 +134,8 @@ void VulkanProgram::createInstance() {
   if (vkCreateInstance(&createInfo, nullptr, &_instance) != VK_SUCCESS) {
     throw std::runtime_error("Failed to create Vulkan instance");
   }
+
+  std::cout << "DEBUG: vulkan instance created" << std::endl;
 }
 
 void VulkanProgram::pickPhysicalDevice() {
@@ -92,6 +159,8 @@ void VulkanProgram::pickPhysicalDevice() {
   if (_physicalDevice == VK_NULL_HANDLE) {
     throw std::runtime_error("Failed to find a suitable GPU");
   }
+
+  std::cout << "DEBUG: physical device found" << std::endl;
 }
 
 bool VulkanProgram::isDeviceSuitable(VkPhysicalDevice device) {
@@ -103,7 +172,9 @@ bool VulkanProgram::isDeviceSuitable(VkPhysicalDevice device) {
 
   // TODO: Ensure certain features/properties, right now doesn't matter
 
-  return true;
+  QueueFamilyIndices indices = findQueueFamilies(device);
+
+  return indices.isComplete();
 }
 
 const std::vector<const char *> VulkanProgram::getRequiredExtensions() {
