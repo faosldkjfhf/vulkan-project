@@ -6,8 +6,15 @@
 
 struct QueueFamilyIndices {
   int graphicsFamily = -1;
+  int presentFamily = -1;
 
-  bool isComplete() { return graphicsFamily != -1; }
+  bool isComplete() { return graphicsFamily != -1 && presentFamily != -1; }
+};
+
+struct SwapchainSupportDetails {
+  VkSurfaceCapabilitiesKHR capabilities;
+  std::vector<VkSurfaceFormatKHR> formats;
+  std::vector<VkPresentModeKHR> presentModes;
 };
 
 class VulkanProgram {
@@ -15,25 +22,35 @@ public:
   VulkanProgram() = default;
   ~VulkanProgram();
 
-  void initVulkan();
+  void initVulkan(GLFWwindow *window);
 
 private:
   VkInstance _instance;
   VkDebugUtilsMessengerEXT _debugMessenger;
   VkPhysicalDevice _physicalDevice = VK_NULL_HANDLE;
   VkQueue _graphicsQueue;
+  VkQueue _presentQueue;
   VkDevice _device;
+  VkSurfaceKHR _surface;
+
   const std::vector<const char *> _validationLayers = {
       "VK_LAYER_KHRONOS_validation",
+  };
+  const std::vector<const char *> _deviceExtensions = {
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
   };
 
   void createInstance();
   void setupDebugMessenger();
   void pickPhysicalDevice();
   void createLogicalDevice();
-  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+  void createSurface(GLFWwindow *window);
 
-  bool isDeviceSuitable(VkPhysicalDevice device);
+  QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
+  SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
+
+  const bool isDeviceSuitable(VkPhysicalDevice device);
+  const bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
   const std::vector<const char *> getRequiredExtensions();
   const bool checkValidationLayerSupport();

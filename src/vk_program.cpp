@@ -1,41 +1,62 @@
-#include "vulkan_program.hpp"
+#include "vk_program.hpp"
 #include <GLFW/glfw3.h>
 #include <cstring>
 #include <iostream>
+#include <set>
+#include <string>
 
 VulkanProgram::~VulkanProgram() {
   vkDestroyDevice(_device, nullptr);
   destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
+  vkDestroySurfaceKHR(_instance, _surface, nullptr);
   vkDestroyInstance(_instance, nullptr);
 }
 
-void VulkanProgram::initVulkan() {
+void VulkanProgram::initVulkan(GLFWwindow *window) {
   createInstance();
   setupDebugMessenger();
+  createSurface(window);
   pickPhysicalDevice();
   createLogicalDevice();
+}
+
+void VulkanProgram::createSurface(GLFWwindow *window) {
+  if (glfwCreateWindowSurface(_instance, window, nullptr, &_surface) !=
+      VK_SUCCESS) {
+    throw std::runtime_error("Failed to create window surface");
+  }
+
+  std::cout << "DEBUG: window surface created" << std::endl;
 }
 
 void VulkanProgram::createLogicalDevice() {
   QueueFamilyIndices indices = findQueueFamilies(_physicalDevice);
 
-  VkDeviceQueueCreateInfo queueCreateInfo = {};
-  queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-  queueCreateInfo.queueFamilyIndex = indices.graphicsFamily;
-  queueCreateInfo.queueCount = 1;
+  std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+  std::set<int> uniqueQueueFamilies = {indices.graphicsFamily,
+                                       indices.presentFamily};
 
   float queuePriority = 1.0f;
-  queueCreateInfo.pQueuePriorities = &queuePriority;
+  for (int queueFamily : uniqueQueueFamilies) {
+    VkDeviceQueueCreateInfo queueCreateInfo = {};
+    queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+    queueCreateInfo.queueFamilyIndex = queueFamily;
+    queueCreateInfo.queueCount = 1;
+    queueCreateInfo.pQueuePriorities = &queuePriority;
+    queueCreateInfos.push_back(queueCreateInfo);
+  }
 
   VkPhysicalDeviceFeatures deviceFeatures = {};
 
   VkDeviceCreateInfo createInfo = {};
   createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-  createInfo.pQueueCreateInfos = &queueCreateInfo;
-  createInfo.queueCreateInfoCount = 1;
+  createInfo.pQueueCreateInfos = queueCreateInfos.data();
+  createInfo.queueCreateInfoCount = queueCreateInfos.size();
   createInfo.pEnabledFeatures = &deviceFeatures;
   createInfo.enabledLayerCount = _validationLayers.size();
   createInfo.ppEnabledLayerNames = _validationLayers.data();
+  createInfo.enabledExtensionCount = _deviceExtensions.size();
+  createInfo.ppEnabledExtensionNames = _deviceExtensions.data();
 
   if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) !=
       VK_SUCCESS) {
@@ -43,8 +64,16 @@ void VulkanProgram::createLogicalDevice() {
   }
 
   vkGetDeviceQueue(_device, indices.graphicsFamily, 0, &_graphicsQueue);
+  vkGetDeviceQueue(_device, indices.presentFamily, 0, &_presentQueue);
 
   std::cout << "DEBUG: logical device created" << std::endl;
+}
+
+SwapchainSupportDetails
+VulkanProgram::querySwapchainSupport(VkPhysicalDevice device) {
+  SwapchainSupportDetails details;
+
+  return details;
 }
 
 QueueFamilyIndices VulkanProgram::findQueueFamilies(VkPhysicalDevice device) {
@@ -61,6 +90,13 @@ QueueFamilyIndices VulkanProgram::findQueueFamilies(VkPhysicalDevice device) {
   for (const auto &queueFamily : queueFamilies) {
     if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) {
       indices.graphicsFamily = i;
+    }
+
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface, &presentSupport);
+
+    if (presentSupport) {
+      indices.presentFamily = i;
     }
 
     if (indices.isComplete()) {
@@ -163,7 +199,7 @@ void VulkanProgram::pickPhysicalDevice() {
   std::cout << "DEBUG: physical device found" << std::endl;
 }
 
-bool VulkanProgram::isDeviceSuitable(VkPhysicalDevice device) {
+const bool VulkanProgram::isDeviceSuitable(VkPhysicalDevice device) {
   VkPhysicalDeviceProperties deviceProperties = {};
   vkGetPhysicalDeviceProperties(device, &deviceProperties);
 
@@ -173,8 +209,32 @@ bool VulkanProgram::isDeviceSuitable(VkPhysicalDevice device) {
   // TODO: Ensure certain features/properties, right now doesn't matter
 
   QueueFamilyIndices indices = findQueueFamilies(device);
+  bool extensionsSupported = checkDeviceExtensionSupport(device);
 
   return indices.isComplete();
+}
+
+const bool VulkanProgram::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+  unsigned int extensionCount = 0;
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount,
+                                       nullptr);
+
+  std::vector<VkExtensionProperties> availableExtensions(extensionCount);
+  vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount,
+                                       availableExtensions.data());
+
+  std::set<std::string> requiredExtensions(_deviceExtensions.begin(),
+                                           _deviceExtensions.end());
+
+  for (const auto &extension : availableExtensions) {
+    requiredExtensions.erase(extension.extensionName);
+
+    if (requiredExtensions.empty()) {
+      return true;
+    }
+  }
+
+  return true;
 }
 
 const std::vector<const char *> VulkanProgram::getRequiredExtensions() {

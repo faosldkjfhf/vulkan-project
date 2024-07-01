@@ -3,7 +3,7 @@
 Engine::Engine()
     : _window(std::make_shared<Window>(640, 480)),
       _vulkanProgram(std::make_shared<VulkanProgram>()) {
-  _vulkanProgram->initVulkan();
+  _vulkanProgram->initVulkan(_window->getWindow());
 }
 
 Engine::~Engine() {}
