@@ -32,6 +32,7 @@ private:
   VkQueue _presentQueue;
   VkDevice _device;
   VkSurfaceKHR _surface;
+  VkSwapchainKHR _swapchain;
 
   const std::vector<const char *> _validationLayers = {
       "VK_LAYER_KHRONOS_validation",
@@ -45,6 +46,7 @@ private:
   void pickPhysicalDevice();
   void createLogicalDevice();
   void createSurface(GLFWwindow *window);
+  void createSwapChain(GLFWwindow *window);
 
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
@@ -54,6 +56,12 @@ private:
 
   const std::vector<const char *> getRequiredExtensions();
   const bool checkValidationLayerSupport();
+  VkSurfaceFormatKHR chooseSwapSurfaceFormat(
+      const std::vector<VkSurfaceFormatKHR> &availableFormats);
+  VkPresentModeKHR chooseSwapPresentMode(
+      const std::vector<VkPresentModeKHR> &availablePresentModes);
+  VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities,
+                              GLFWwindow *window);
 
   // TODO: Move to a separate utils class
   void populateDebugMessengerCreateInfo(
@@ -72,9 +80,8 @@ private:
                 VkDebugUtilsMessageTypeFlagsEXT messageType,
                 const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
                 void *pUserData) {
-    if (messageSeverity > VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
-      std::cout << messageSeverity << ": " << pCallbackData->pMessage
-                << std::endl;
+    if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+      std::cout << "validation layer: " << pCallbackData->pMessage << std::endl;
     }
 
     return VK_FALSE;
