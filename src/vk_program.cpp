@@ -10,6 +10,9 @@
 #include <vulkan/vulkan_core.h>
 
 VulkanProgram::~VulkanProgram() {
+  for (auto &imageView : _swapchainImageViews) {
+    vkDestroyImageView(_device, imageView, nullptr);
+  }
   vkDestroySwapchainKHR(_device, _swapchain, nullptr);
   vkDestroyDevice(_device, nullptr);
   destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr);
@@ -24,6 +27,35 @@ void VulkanProgram::initVulkan(GLFWwindow *window) {
   pickPhysicalDevice();
   createLogicalDevice();
   createSwapChain(window);
+  createImageViews();
+}
+
+void VulkanProgram::createImageViews() {
+  _swapchainImageViews.resize(_swapchainImages.size());
+
+  for (size_t i = 0; i < _swapchainImages.size(); i++) {
+    VkImageViewCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    createInfo.image = _swapchainImages[i];
+    createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    createInfo.format = _swapchainImageFormat;
+    createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+    createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    createInfo.subresourceRange.baseMipLevel = 0;
+    createInfo.subresourceRange.levelCount = 1;
+    createInfo.subresourceRange.baseArrayLayer = 0;
+    createInfo.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(_device, &createInfo, nullptr,
+                          &_swapchainImageViews[i]) != VK_SUCCESS) {
+      throw std::runtime_error("couldn't create image view");
+    }
+  }
+
+  std::cout << "DEBUG: image views created" << std::endl;
 }
 
 void VulkanProgram::createSwapChain(GLFWwindow *window) {
@@ -82,6 +114,14 @@ void VulkanProgram::createSwapChain(GLFWwindow *window) {
   }
 
   std::cout << "DEBUG: swapchain created" << std::endl;
+
+  vkGetSwapchainImagesKHR(_device, _swapchain, &imageCount, nullptr);
+  _swapchainImages.resize(imageCount);
+  vkGetSwapchainImagesKHR(_device, _swapchain, &imageCount,
+                          _swapchainImages.data());
+
+  _swapchainImageFormat = surfaceFormat.format;
+  _swapchainExtent = extent;
 }
 
 void VulkanProgram::createSurface(GLFWwindow *window) {

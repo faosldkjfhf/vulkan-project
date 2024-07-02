@@ -1,5 +1,7 @@
 #pragma once
 
+// TODO: Abstract everything out into separate classes
+
 #include "glfw.hpp"
 #include <iostream>
 #include <vector>
@@ -33,6 +35,10 @@ private:
   VkDevice _device;
   VkSurfaceKHR _surface;
   VkSwapchainKHR _swapchain;
+  std::vector<VkImage> _swapchainImages;
+  VkFormat _swapchainImageFormat;
+  VkExtent2D _swapchainExtent;
+  std::vector<VkImageView> _swapchainImageViews;
 
   const std::vector<const char *> _validationLayers = {
       "VK_LAYER_KHRONOS_validation",
@@ -47,6 +53,8 @@ private:
   void createLogicalDevice();
   void createSurface(GLFWwindow *window);
   void createSwapChain(GLFWwindow *window);
+  void createImageViews();
+  void createGraphicsPipeline();
 
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
