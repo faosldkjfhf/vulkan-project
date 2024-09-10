@@ -6,13 +6,11 @@ This is a personal project to learn Vulkan and also refine my graphics skills
 
 ## Compiling
 
-This was build in linux and for linux. To compile, run
+This was built in linux and for linux. To compile, run `make` 
 
-`make`
+Dependencies - vulkan, glfw
 
 ## Running
 
-To run, use the command
-
-`./prog`
+To run, use the command `./prog`
 
