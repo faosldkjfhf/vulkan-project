@@ -1,1 +1,1 @@
-*** Vulkan OBJ Loader ***
+**Vulkan OBJ Loader**
