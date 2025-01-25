@@ -301,7 +301,7 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
 }
 
 void Renderer::draw(VkCommandBuffer commandBuffer, uint32_t count, uint32_t instances) {
-  vkCmdDraw(commandBuffer, count, instances, 0, 0);
+  vkCmdDrawIndexed(commandBuffer, count, instances, 0, 0, 0);
 }
 
 void Renderer::setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor) {

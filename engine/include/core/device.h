@@ -33,6 +33,9 @@ private:
   void createWindowSurface();
   void pickPhysicalDevice();
   void createLogicalDevice();
+
+  // NOTE: Possible to create 2 command pools
+  // one for short-term allocations, one for long-term
   void createCommandPool();
 
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
