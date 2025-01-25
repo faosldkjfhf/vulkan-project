@@ -9,7 +9,6 @@ Window::Window(int width, int height, const char *title, Callbacks *callbacks) {
   }
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
   _window = glfwCreateWindow(width, height, title, NULL, NULL);
   if (!_window) {
     glfwTerminate();
@@ -19,6 +18,10 @@ Window::Window(int width, int height, const char *title, Callbacks *callbacks) {
   glfwSetWindowUserPointer(_window, callbacks);
   glfwSetKeyCallback(_window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
     reinterpret_cast<Callbacks *>(glfwGetWindowUserPointer(window))->onKey(key, scancode, action, mods);
+  });
+
+  glfwSetFramebufferSizeCallback(_window, [](GLFWwindow *window, int width, int height) {
+    reinterpret_cast<Callbacks *>(glfwGetWindowUserPointer(window))->onResize(width, height);
   });
 }
 

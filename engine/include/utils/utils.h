@@ -1,6 +1,7 @@
 #pragma once
 
 #include "pch.h"
+#include <cstring>
 
 namespace bisky {
 namespace utils {

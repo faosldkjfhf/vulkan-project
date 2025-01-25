@@ -23,6 +23,8 @@ public:
   QueueFamilyIndices indices() { return _indices; }
   VkQueue queue() { return _queue; }
   VkSurfaceKHR surface() { return _surface; }
+  VkCommandPool commandPool() { return _commandPool; }
+  VmaAllocator allocator() { return _allocator; }
 
 private:
   void initialize();
@@ -31,6 +33,7 @@ private:
   void createWindowSurface();
   void pickPhysicalDevice();
   void createLogicalDevice();
+  void createCommandPool();
 
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   bool isDeviceSuitable(VkPhysicalDevice device);
@@ -44,6 +47,8 @@ private:
   VkDebugUtilsMessengerEXT _debugMessenger;
   QueueFamilyIndices _indices;
   VkQueue _queue;
+  VkCommandPool _commandPool;
+  VmaAllocator _allocator;
 };
 
 } // namespace core

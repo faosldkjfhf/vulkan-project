@@ -13,6 +13,8 @@ Device::Device(Window &window) : _window(window) { initialize(); }
 Device::~Device() {}
 
 void Device::cleanup() {
+  vmaDestroyAllocator(_allocator);
+  vkDestroyCommandPool(_device, _commandPool, nullptr);
   vkDestroyDevice(_device, nullptr);
 
   if (utils::enableValidationLayers)
@@ -28,6 +30,23 @@ void Device::initialize() {
   createWindowSurface();
   pickPhysicalDevice();
   createLogicalDevice();
+  createCommandPool();
+
+  VmaVulkanFunctions vulkanFunctions = {};
+  vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
+  vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
+
+  VmaAllocatorCreateInfo allocatorCreateInfo = {};
+  allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+  allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_4;
+  allocatorCreateInfo.physicalDevice = _physicalDevice;
+  allocatorCreateInfo.device = _device;
+  allocatorCreateInfo.instance = _instance;
+  allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
+
+  if (vmaCreateAllocator(&allocatorCreateInfo, &_allocator) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create allocator");
+  }
 }
 
 void Device::createInstance() {
@@ -218,6 +237,16 @@ SwapchainSupportDetails Device::querySwapchainSupport(VkPhysicalDevice device) {
   }
 
   return details;
+}
+
+void Device::createCommandPool() {
+  VkCommandPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+  poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+  poolInfo.queueFamilyIndex = _indices.queueFamily.value();
+
+  if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
+    throw std::runtime_error("failed to create command pool");
+  }
 }
 
 } // namespace core
