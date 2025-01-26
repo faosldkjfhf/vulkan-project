@@ -23,11 +23,15 @@ if (APPLE)
         IMPORTED_LOCATION ${slang_zip_SOURCE_DIR}/lib/libslang.dylib
         INTERFACE_INCLUDE_DIRECTORIES ${slang_zip_SOURCE_DIR}/include
     )
-  # add_library(slang::slang ALIAS slang)
+
+  add_library(slang::slang ALIAS slang)
+else()
+  find_package(slang REQUIRED)
 endif()
+
 
 
 add_library(engine engine.cpp src/vma.cpp src/core/window.cpp src/core/device.cpp src/rendering/renderer.cpp src/core/pipeline.cpp)
 target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/slang/include)
-target_link_libraries(engine PRIVATE math slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
+target_link_libraries(engine PRIVATE math slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)
