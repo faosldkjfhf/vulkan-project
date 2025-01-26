@@ -1,3 +1,3 @@
-[submodule "engine/libs/slang"]
-	path = engine/libs/slang
-	url = git@github.com:shader-slang/slang.git
+[submodule "engine/libs/stb"]
+	path = engine/libs/stb
+	url = git@github.com:nothings/stb.git
