@@ -42,6 +42,8 @@ public:
   VkExtent2D extent() { return _extent; }
   bool framebufferResized() { return _framebufferResized; }
   void setFramebufferResized(bool val) { _framebufferResized = val; }
+  uint32_t currentFrame() { return _currentFrame; }
+  float aspectRatio() { return _extent.width / (float)_extent.height; }
 
 private:
   void initialize();
