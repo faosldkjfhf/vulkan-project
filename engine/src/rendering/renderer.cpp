@@ -1,4 +1,5 @@
 #include "core/device.h"
+#include "core/pipeline.h"
 #include "core/window.h"
 #include "pch.h"
 
@@ -26,6 +27,10 @@ void Renderer::initialize() {
 }
 
 void Renderer::cleanup() {
+  for (auto model : _models) {
+    model.cleanup();
+  }
+
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device.device(), _imageAvailableSemaphores[i], nullptr);
     vkDestroySemaphore(_device.device(), _renderFinishedSemaphores[i], nullptr);
@@ -249,14 +254,19 @@ void Renderer::createSyncObjects() {
   }
 }
 
+void Renderer::addModel(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices) {
+  _models.emplace_back(_device, vertices, indices);
+}
+
 VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
-  vkResetCommandBuffer(_commandBuffers[_currentFrame], 0);
+  VkCommandBuffer buffer = _commandBuffers[_currentFrame];
+  vkResetCommandBuffer(buffer, 0);
 
   VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
   beginInfo.flags = 0;
   beginInfo.pInheritanceInfo = nullptr;
 
-  if (vkBeginCommandBuffer(_commandBuffers[_currentFrame], &beginInfo) != VK_SUCCESS) {
+  if (vkBeginCommandBuffer(buffer, &beginInfo) != VK_SUCCESS) {
     throw std::runtime_error("failed to begin command buffer");
   }
 
@@ -270,9 +280,9 @@ VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
   renderPassInfo.clearValueCount = 1;
   renderPassInfo.pClearValues = &clearColor;
 
-  vkCmdBeginRenderPass(_commandBuffers[_currentFrame], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+  vkCmdBeginRenderPass(buffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-  return _commandBuffers[_currentFrame];
+  return buffer;
 }
 
 void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
@@ -300,8 +310,11 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   }
 }
 
-void Renderer::draw(VkCommandBuffer commandBuffer, uint32_t count, uint32_t instances) {
-  vkCmdDrawIndexed(commandBuffer, count, instances, 0, 0, 0);
+void Renderer::draw(VkCommandBuffer commandBuffer) {
+  for (auto model : _models) {
+    model.bind(commandBuffer);
+    model.draw(commandBuffer);
+  }
 }
 
 void Renderer::setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor) {

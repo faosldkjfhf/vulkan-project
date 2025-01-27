@@ -21,17 +21,12 @@ void Pipeline::initialize() {
 
   createDescriptorSetLayout();
   createGraphicsPipeline("../resources/shaders/render/shader.slang", "vertMain", "fragMain");
-  createVertexBuffer();
-  createIndexBuffer();
   createUniformBuffers();
   createDescriptorPool();
   createDescriptorSets();
 }
 
 void Pipeline::cleanup() {
-  vmaDestroyBuffer(_device.allocator(), _indexBuffer, _indexAllocation);
-  vmaDestroyBuffer(_device.allocator(), _vertexBuffer, _vertexAllocation);
-
   for (size_t i = 0; i < rendering::MAX_FRAMES_IN_FLIGHT; i++) {
     vmaUnmapMemory(_device.allocator(), _uniformBufferAllocations[i]);
     vmaDestroyBuffer(_device.allocator(), _uniformBuffers[i], _uniformBufferAllocations[i]);
@@ -44,13 +39,9 @@ void Pipeline::cleanup() {
 }
 
 void Pipeline::bind(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
-  VkBuffer vertexBuffers[] = {_vertexBuffer};
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-  vkCmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _pipelineLayout, 0, 1,
                           &_descriptorSets[imageIndex], 0, nullptr);
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, _graphicsPipeline);
 }
 
 void Pipeline::setDynamicState(std::vector<VkDynamicState> dynamicStates) {
@@ -257,36 +248,6 @@ void Pipeline::createGraphicsPipeline(const char *file, const char *vertEntry, c
 
   vkDestroyShaderModule(_device.device(), vertShaderModule, nullptr);
   vkDestroyShaderModule(_device.device(), fragShaderModule, nullptr);
-}
-
-void Pipeline::createVertexBuffer() {
-  VkBuffer stagingBuffer;
-  VmaAllocation stagingAllocation;
-  VkDeviceSize size = sizeof(vertices[0]) * vertices.size();
-
-  createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-               stagingBuffer, stagingAllocation);
-  vmaCopyMemoryToAllocation(_device.allocator(), vertices.data(), stagingAllocation, 0, size);
-  createBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _vertexBuffer, _vertexAllocation);
-  copyBuffer(stagingBuffer, _vertexBuffer, size);
-
-  vmaDestroyBuffer(_device.allocator(), stagingBuffer, stagingAllocation);
-}
-
-void Pipeline::createIndexBuffer() {
-  VkBuffer stagingBuffer;
-  VmaAllocation stagingAllocation;
-  VkDeviceSize size = sizeof(indices[0]) * indices.size();
-
-  createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT,
-               stagingBuffer, stagingAllocation);
-  vmaCopyMemoryToAllocation(_device.allocator(), indices.data(), stagingAllocation, 0, size);
-  createBuffer(size, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _indexBuffer, _indexAllocation);
-  copyBuffer(stagingBuffer, _indexBuffer, size);
-
-  vmaDestroyBuffer(_device.allocator(), stagingBuffer, stagingAllocation);
 }
 
 void Pipeline::createUniformBuffers() {

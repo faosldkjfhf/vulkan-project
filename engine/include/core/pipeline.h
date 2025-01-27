@@ -18,7 +18,7 @@ const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}}
                                       {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
                                       {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
 
-const std::vector<uint16_t> indices = {0, 1, 2, 2, 3, 0};
+const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
 
 class Window;
 class Device;
@@ -41,10 +41,6 @@ public:
   Pipeline(Window &window, Device &device, rendering::Renderer &renderer);
   ~Pipeline();
 
-  VkPipelineLayout layout() { return _pipelineLayout; }
-  VkPipeline pipeline() { return _graphicsPipeline; }
-  size_t numIndices() { return indices.size(); }
-
   void cleanup();
   void bind(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
@@ -65,8 +61,6 @@ private:
   void initialize();
   void createDescriptorSetLayout();
   void createGraphicsPipeline(const char *file, const char *vertEntry, const char *fragEntry);
-  void createVertexBuffer();
-  void createIndexBuffer();
   void createUniformBuffers();
   void createDescriptorPool();
   void createDescriptorSets();
@@ -88,12 +82,6 @@ private:
   VkDescriptorSetLayout _descriptorSetLayout;
   VkDescriptorPool _descriptorPool;
   std::vector<VkDescriptorSet> _descriptorSets;
-
-  // vertex and index buffers
-  VkBuffer _vertexBuffer;
-  VmaAllocation _vertexAllocation;
-  VkBuffer _indexBuffer;
-  VmaAllocation _indexAllocation;
 
   // uniform buffers
   std::vector<VkBuffer> _uniformBuffers;

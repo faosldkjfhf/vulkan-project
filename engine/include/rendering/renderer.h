@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/device.h"
+#include "core/model.h"
 #include "core/window.h"
 #include "pch.h"
 
@@ -25,9 +26,11 @@ public:
   void cleanup();
   void cleanupSwapchain();
 
+  void addModel(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
+
   VkCommandBuffer beginRenderPass(uint32_t imageIndex);
   void endRenderPass(VkCommandBuffer commandBuffer);
-  void draw(VkCommandBuffer commandBuffer, uint32_t count, uint32_t instances = 1);
+  void draw(VkCommandBuffer commandBuffer);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
@@ -76,6 +79,8 @@ private:
   std::vector<VkFence> _inFlightFences;
   uint32_t _currentFrame = 0;
   bool _framebufferResized = false;
+
+  std::vector<core::Model> _models;
 };
 
 } // namespace rendering
