@@ -67,7 +67,7 @@ void Engine::render() {
   // submit commands
   _pipeline.bind(commandBuffer, _renderer.currentFrame());
   _renderer.setViewportAndScissor(commandBuffer, viewport, scissor);
-  _renderer.draw(commandBuffer);
+  _renderer.draw(_pipeline, commandBuffer);
 
   // end command buffer and render pass
   _renderer.endRenderPass(commandBuffer);

@@ -13,12 +13,17 @@ class Renderer;
 
 namespace core {
 
-const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-                                      {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-                                      {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-                                      {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
+const std::vector<Vertex> vertices = {{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                                      {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                                      {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                                      {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
 
-const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0};
+                                      {{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
+                                      {{0.5f, -0.5f, -0.5f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                                      {{0.5f, 0.5f, -0.5f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+                                      {{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}};
+
+const std::vector<uint32_t> indices = {0, 1, 2, 2, 3, 0, 4, 5, 6, 6, 7, 4};
 
 class Window;
 class Device;
@@ -41,6 +46,8 @@ public:
   Pipeline(Window &window, Device &device, rendering::Renderer &renderer);
   ~Pipeline();
 
+  VkPipelineLayout layout() { return _pipelineLayout; }
+
   void cleanup();
   void bind(VkCommandBuffer commandBuffer, uint32_t imageIndex);
 
@@ -60,7 +67,11 @@ public:
 private:
   void initialize();
   void createDescriptorSetLayout();
+  void createPipelineLayout();
   void createGraphicsPipeline(const char *file, const char *vertEntry, const char *fragEntry);
+  void createTextureImage();
+  void createTextureImageView();
+  void createTextureImageSampler();
   void createUniformBuffers();
   void createDescriptorPool();
   void createDescriptorSets();
@@ -70,6 +81,7 @@ private:
   void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryAllocateFlags properties, VkBuffer &buffer,
                     VmaAllocation &allocation);
   void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
 
   Window &_window;
   Device &_device;
@@ -87,6 +99,11 @@ private:
   std::vector<VkBuffer> _uniformBuffers;
   std::vector<VmaAllocation> _uniformBufferAllocations;
   std::vector<void *> _uniformBuffersMapped;
+
+  VkImage _textureImage;
+  VmaAllocation _textureAllocation;
+  VkImageView _textureImageView;
+  VkSampler _textureSampler;
 
   // slang global session for compiling
   Slang::ComPtr<slang::IGlobalSession> _globalSession;

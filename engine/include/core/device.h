@@ -16,6 +16,9 @@ public:
   void cleanup();
 
   SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
+  VkFormat findSupportedFormat(const std::vector<VkFormat> &candidates, VkImageTiling tiling,
+                               VkFormatFeatureFlags features);
+  VkFormat findDepthFormat();
 
   VkDevice device() { return _device; }
   VkPhysicalDevice physicalDevice() { return _physicalDevice; }
