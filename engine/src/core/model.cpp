@@ -21,6 +21,7 @@ Model::Model(Device &device, const char *objPath, const char *texturePath) : _de
     throw std::runtime_error(warn + err);
   }
 
+  std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
   for (const auto &shape : shapes) {
     for (const auto &index : shape.mesh.indices) {
       Vertex vertex = {};
@@ -33,8 +34,12 @@ Model::Model(Device &device, const char *objPath, const char *texturePath) : _de
 
       vertex.color = {1.0f, 1.0f, 1.0f};
 
-      _vertices.push_back(vertex);
-      _indices.push_back(_indices.size());
+      if (uniqueVertices.count(vertex) == 0) {
+        uniqueVertices[vertex] = static_cast<uint32_t>(_vertices.size());
+        _vertices.push_back(vertex);
+      }
+
+      _indices.push_back(uniqueVertices[vertex]);
     }
   }
 

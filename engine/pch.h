@@ -15,8 +15,10 @@
 #include <GLFW/glfw3.h>
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
+#include <glm/gtx/hash.hpp>
 
 #include "tiny_obj_loader.h"
 #include "vk_mem_alloc.h"
@@ -37,6 +39,10 @@ struct Vertex {
   glm::vec3 position;
   glm::vec3 color;
   glm::vec2 uv;
+
+  bool operator==(const Vertex &other) const {
+    return position == other.position && color == other.color && uv == other.uv;
+  }
 
   static VkVertexInputBindingDescription getBindingDescription() {
     VkVertexInputBindingDescription bindingDescription{};
@@ -79,3 +85,14 @@ struct PushConstants {
   alignas(16) glm::vec3 offset;
   alignas(16) glm::vec3 color;
 };
+
+namespace std {
+
+template <> struct hash<Vertex> {
+  size_t operator()(Vertex const &vertex) const {
+    return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+           (hash<glm::vec2>()(vertex.uv) << 1);
+  }
+};
+
+} // namespace std
