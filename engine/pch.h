@@ -18,6 +18,7 @@
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 
+#include "tiny_obj_loader.h"
 #include "vk_mem_alloc.h"
 
 struct QueueFamilyIndices {

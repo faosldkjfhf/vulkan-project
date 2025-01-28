@@ -1,3 +1,6 @@
 [submodule "engine/libs/stb"]
 	path = engine/libs/stb
 	url = git@github.com:nothings/stb.git
+[submodule "engine/libs/tinyobjloader"]
+	path = engine/libs/tinyobjloader
+	url = git@github.com:tinyobjloader/tinyobjloader.git

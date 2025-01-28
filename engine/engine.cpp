@@ -7,7 +7,7 @@ Engine::Engine() { initialize(); }
 
 Engine::~Engine() { cleanup(); }
 
-void Engine::initialize() { _renderer.addModel(core::vertices, core::indices); }
+void Engine::initialize() { _renderer.addModel("../resources/models/viking_room.obj"); }
 
 void Engine::cleanup() {
   _pipeline.cleanup();

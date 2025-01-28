@@ -20,7 +20,7 @@ else()
 endif()
 
 
-add_library(engine engine.cpp src/vma.cpp src/stb_image.cpp src/core/window.cpp src/core/device.cpp src/rendering/renderer.cpp src/core/model.cpp src/core/pipeline.cpp)
-target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/slang/include libs/stb)
+add_library(engine engine.cpp src/vma.cpp src/stb_image.cpp src/tinyobjloader.cc src/core/window.cpp src/core/device.cpp src/rendering/renderer.cpp src/core/model.cpp src/core/pipeline.cpp)
+target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/slang/include libs/stb libs/tinyobjloader)
 target_link_libraries(engine PRIVATE math slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)

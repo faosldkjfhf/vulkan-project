@@ -10,6 +10,7 @@ class Device;
 class Model {
 public:
   Model(Device &device, const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
+  Model(Device &device, const char *objPath, const char *texturePath = nullptr);
   ~Model();
 
   void cleanup();
@@ -30,6 +31,9 @@ private:
   VkBuffer _indexBuffer;
   VmaAllocation _indexAllocation;
   uint32_t _indexCount;
+
+  std::vector<Vertex> _vertices;
+  std::vector<uint32_t> _indices;
 };
 
 } // namespace core

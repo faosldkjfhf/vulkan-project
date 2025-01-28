@@ -380,6 +380,8 @@ void Renderer::addModel(const std::vector<Vertex> &vertices, const std::vector<u
   _models.emplace_back(_device, vertices, indices);
 }
 
+void Renderer::addModel(const char *objPath) { _models.emplace_back(_device, objPath); }
+
 VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
   VkCommandBuffer buffer = _commandBuffers[_currentFrame];
   vkResetCommandBuffer(buffer, 0);

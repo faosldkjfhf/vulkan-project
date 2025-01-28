@@ -28,6 +28,7 @@ public:
   void cleanupSwapchain();
 
   void addModel(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
+  void addModel(const char *objPath);
 
   void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
                    VkMemoryPropertyFlags properties, VkImage &image, VmaAllocation &imageAllocation);

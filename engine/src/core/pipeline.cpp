@@ -303,7 +303,7 @@ void Pipeline::createUniformBuffers() {
 
 void Pipeline::createTextureImage() {
   int width, height, channels;
-  stbi_uc *pixels = stbi_load("../resources/textures/texture.jpg", &width, &height, &channels, STBI_rgb_alpha);
+  stbi_uc *pixels = stbi_load("../resources/textures/viking_room.png", &width, &height, &channels, STBI_rgb_alpha);
   VkDeviceSize imageSize = width * height * 4;
 
   if (!pixels) {
