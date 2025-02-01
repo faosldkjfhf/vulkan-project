@@ -30,9 +30,12 @@ public:
   void addModel(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
   void addModel(const char *objPath);
 
-  void createImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage,
-                   VkMemoryPropertyFlags properties, VkImage &image, VmaAllocation &imageAllocation);
-  void transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+  VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
+                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image,
+                   VmaAllocation &imageAllocation);
+  void transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, VkImageLayout oldLayout,
+                             VkImageLayout newLayout);
 
   VkCommandBuffer beginRenderPass(uint32_t imageIndex);
   void endRenderPass(VkCommandBuffer commandBuffer);

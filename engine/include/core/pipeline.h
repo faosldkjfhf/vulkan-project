@@ -69,9 +69,13 @@ private:
   void createDescriptorSetLayout();
   void createPipelineLayout();
   void createGraphicsPipeline(const char *file, const char *vertEntry, const char *fragEntry);
+
+  // TODO: move to model?
   void createTextureImage();
   void createTextureImageView();
   void createTextureImageSampler();
+  void generateMipmaps(VkImage image, VkFormat format, int32_t width, int32_t height, uint32_t mipLevels);
+
   void createUniformBuffers();
   void createDescriptorPool();
   void createDescriptorSets();
@@ -100,6 +104,8 @@ private:
   std::vector<VmaAllocation> _uniformBufferAllocations;
   std::vector<void *> _uniformBuffersMapped;
 
+  // TODO: Should be moved to the model
+  uint32_t _mipLevels;
   VkImage _textureImage;
   VmaAllocation _textureAllocation;
   VkImageView _textureImageView;
