@@ -1,5 +1,9 @@
 #include "engine.h"
-#include "pch.h"
+
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
+#include "rendering/renderer.h"
 
 namespace bisky {
 
@@ -16,6 +20,12 @@ void Engine::initialize() {
   config.inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
   config.inputAssembly.primitiveRestartEnable = VK_FALSE;
   config.inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+
+  uint32_t count = rendering::MAX_FRAMES_IN_FLIGHT;
+  config.descriptorTypes = {
+      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, count},
+      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, count},
+  };
 
   config.viewportState = {VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO};
   config.viewportState.viewportCount = 1;
@@ -77,6 +87,36 @@ void Engine::initialize() {
                                                 "fragMain", config);
 
   createDefaultScene();
+
+  // IMGUI_CHECKVERSION();
+  // ImGui::CreateContext();
+  // ImGuiIO &io = ImGui::GetIO();
+  // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  //
+  // ImGui_ImplGlfw_InitForVulkan(_window->window(), true);
+  // ImGui_ImplVulkan_InitInfo initInfo = {};
+  // initInfo.Instance = _device->instance();
+  // initInfo.PhysicalDevice = _device->physicalDevice();
+  // initInfo.Device = _device->device();
+  // initInfo.QueueFamily = _device->indices().queueFamily.value();
+  // initInfo.Queue = _device->queue();
+  // initInfo.PipelineCache = VK_NULL_HANDLE;
+  // initInfo.DescriptorPool = _pipeline->descriptorPool();
+  // initInfo.Subpass = 0;
+  // initInfo.MinImageCount = 2;
+  // initInfo.ImageCount = rendering::MAX_FRAMES_IN_FLIGHT;
+  // initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+  // initInfo.Allocator = VK_NULL_HANDLE;
+  // initInfo.CheckVkResultFn = nullptr;
+  // initInfo.RenderPass = _renderer->renderPass();
+  // ImGui_ImplVulkan_Init(&initInfo);
+  //
+  // VkCommandBuffer commandBuffer = _device->beginSingleTimeCommands();
+  // ImGui_ImplVulkan_CreateFontsTexture();
+  // _device->endSingleTimeCommands(commandBuffer);
+  //
+  // ImGui_ImplVulkan_DestroyFontsTexture();
 }
 
 void Engine::createDefaultScene() {

@@ -154,6 +154,10 @@ void Pipeline::updateUniformBuffer(uint32_t imageIndex, void *data, size_t size)
   memcpy(_uniformBuffersMapped[imageIndex], data, size);
 }
 
+void Pipeline::updateConfig(const Pipeline::Config &config) { _config = config; }
+
+void Pipeline::addDescriptor(VkDescriptorType type, uint32_t count) { _descriptorPoolSizes.push_back({type, count}); }
+
 void Pipeline::createGraphicsPipeline() {
   VkGraphicsPipelineCreateInfo pipelineInfo = {VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO};
   pipelineInfo.stageCount = static_cast<uint32_t>(_config.shaderStages.size());
@@ -327,15 +331,15 @@ void Pipeline::generateMipmaps(VkImage image, VkFormat format, int32_t width, in
 }
 
 void Pipeline::createDescriptorPool() {
-  std::array<VkDescriptorPoolSize, 2> poolSizes = {};
-  poolSizes[0].descriptorCount = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
-  poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  poolSizes[1].descriptorCount = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
-  poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+  // std::array<VkDescriptorPoolSize, 2> poolSizes = {};
+  // poolSizes[0].descriptorCount = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
+  // poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  // poolSizes[1].descriptorCount = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
+  // poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 
   VkDescriptorPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-  poolInfo.pPoolSizes = poolSizes.data();
-  poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+  poolInfo.pPoolSizes = _config.descriptorTypes.data();
+  poolInfo.poolSizeCount = static_cast<uint32_t>(_config.descriptorTypes.size());
   poolInfo.maxSets = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
 
   if (vkCreateDescriptorPool(_device->device(), &poolInfo, nullptr, &_descriptorPool) != VK_SUCCESS) {

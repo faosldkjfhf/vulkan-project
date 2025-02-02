@@ -20,13 +20,21 @@ else()
 endif()
 
 
-add_library(engine engine.cpp src/vma.cpp src/stb_image.cpp
-src/tinyobjloader.cc src/core/window.cpp src/core/device.cpp src/rendering/renderer.cpp src/core/model.cpp src/core/pipeline.cpp src/core/texture.cpp)
+add_library(engine
+  engine.cpp
+  src/vma.cpp src/stb_image.cpp src/tinyobjloader.cc
+  src/core/window.cpp src/core/device.cpp
+  src/rendering/renderer.cpp src/core/model.cpp
+  src/core/pipeline.cpp src/core/texture.cpp
+  libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
+  libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp
+  libs/imgui/backends/imgui_impl_vulkan.cpp libs/imgui/backends/imgui_impl_glfw.cpp)
+
 
 if (APPLE)
   target_include_directories(engine PUBLIC libs/slang/include)
 endif()
 
-target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/stb libs/tinyobjloader)
+target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/stb libs/tinyobjloader libs/imgui libs/imgui/backends)
 target_link_libraries(engine PRIVATE math slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)

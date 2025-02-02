@@ -16,7 +16,8 @@ public:
   struct Config {
     VkPipelineViewportStateCreateInfo viewportState;
     VkPipelineInputAssemblyStateCreateInfo inputAssembly;
-    std::vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    Vector<VkPipelineShaderStageCreateInfo> shaderStages;
+    Vector<VkDescriptorPoolSize> descriptorTypes;
     VkPipelineDynamicStateCreateInfo dynamicState;
     VkPipelineVertexInputStateCreateInfo vertexInput;
     VkPipelineRasterizationStateCreateInfo rasterizer;
@@ -40,6 +41,9 @@ public:
   void updateConfig(const Pipeline::Config &config);
 
   VkPipelineLayout layout() { return _pipelineLayout; }
+  VkDescriptorPool descriptorPool() { return _descriptorPool; }
+
+  void addDescriptor(VkDescriptorType type, uint32_t count);
 
 private:
   void initialize(const char *file, const char *vertEntry, const char *fragEntry);
@@ -81,6 +85,8 @@ private:
   VmaAllocation _textureAllocation;
   VkImageView _textureImageView;
   VkSampler _textureSampler;
+
+  Vector<VkDescriptorPoolSize> _descriptorPoolSizes;
 
   // slang global session for compiling
   Slang::ComPtr<slang::IGlobalSession> _globalSession;

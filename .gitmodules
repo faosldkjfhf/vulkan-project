@@ -4,3 +4,7 @@
 [submodule "engine/libs/tinyobjloader"]
 	path = engine/libs/tinyobjloader
 	url = git@github.com:tinyobjloader/tinyobjloader.git
+[submodule "engine/libs/imgui"]
+	path = engine/libs/imgui
+	url = git@github.com:ocornut/imgui.git
+	branch = docking
