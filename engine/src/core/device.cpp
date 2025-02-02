@@ -38,7 +38,7 @@ void Device::initialize() {
     throw std::runtime_error("failed to create allocator");
   }
 
-  _deletionQueue.push_function([&]() { vmaDestroyAllocator(_allocator); });
+  _deletionQueue.push_back([&]() { vmaDestroyAllocator(_allocator); });
 }
 
 void Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryAllocateFlags properties,
@@ -264,7 +264,7 @@ void Device::createInstance() {
     throw std::runtime_error("failed to create instance");
   }
 
-  _deletionQueue.push_function([&]() { vkDestroyInstance(_instance, nullptr); });
+  _deletionQueue.push_back([&]() { vkDestroyInstance(_instance, nullptr); });
 }
 
 void Device::setupDebugMessenger() {
@@ -278,7 +278,7 @@ void Device::setupDebugMessenger() {
     throw std::runtime_error("failed to setup debug messenger");
   }
 
-  _deletionQueue.push_function([&]() { utils::destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr); });
+  _deletionQueue.push_back([&]() { utils::destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr); });
 }
 
 void Device::createWindowSurface() {
@@ -286,7 +286,7 @@ void Device::createWindowSurface() {
     throw std::runtime_error("failed to create window surface");
   }
 
-  _deletionQueue.push_function([&]() { vkDestroySurfaceKHR(_instance, _surface, nullptr); });
+  _deletionQueue.push_back([&]() { vkDestroySurfaceKHR(_instance, _surface, nullptr); });
 }
 
 void Device::pickPhysicalDevice() {
@@ -339,7 +339,7 @@ void Device::createLogicalDevice() {
 
   vkGetDeviceQueue(_device, _indices.queueFamily.value(), 0, &_queue);
 
-  _deletionQueue.push_function([&]() { vkDestroyDevice(_device, nullptr); });
+  _deletionQueue.push_back([&]() { vkDestroyDevice(_device, nullptr); });
 }
 
 QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device) {
@@ -454,7 +454,7 @@ void Device::createCommandPool() {
     throw std::runtime_error("failed to create command pool");
   }
 
-  _deletionQueue.push_function([&]() { vkDestroyCommandPool(_device, _commandPool, nullptr); });
+  _deletionQueue.push_back([&]() { vkDestroyCommandPool(_device, _commandPool, nullptr); });
 }
 
 } // namespace core

@@ -26,7 +26,6 @@ public:
   ~Renderer();
 
   void cleanup();
-  // void cleanupSwapchain();
 
   VkCommandBuffer beginRenderPass(uint32_t imageIndex);
   void endRenderPass(VkCommandBuffer commandBuffer);

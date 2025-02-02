@@ -13,7 +13,7 @@ namespace bisky {
 namespace rendering {
 
 Renderer::Renderer(Pointer<core::Window> window, Pointer<core::Device> device, VkSwapchainKHR oldSwapchain)
-    : _window(window), _device(device) {
+    : _window(window), _device(device), _oldSwapchain(oldSwapchain) {
   initialize();
 }
 
@@ -110,22 +110,24 @@ void Renderer::createSwapchain() {
     throw std::runtime_error("failed to create swapchain");
   }
 
-  _deletionQueue.push_function([&]() { vkDestroySwapchainKHR(_device->device(), _swapchain, nullptr); });
-
   vkGetSwapchainImagesKHR(_device->device(), _swapchain, &imageCount, nullptr);
   _images.resize(imageCount);
   vkGetSwapchainImagesKHR(_device->device(), _swapchain, &imageCount, _images.data());
 
   _format = format.format;
   _extent = extent;
+
+  _deletionQueue.push_back([&]() { vkDestroySwapchainKHR(_device->device(), _swapchain, nullptr); });
 }
 
 void Renderer::createImageViews() {
   _imageViews.resize(_images.size());
   for (size_t i = 0; i < _images.size(); i++) {
     _imageViews[i] = _device->createImageView(_images[i], _format, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+  }
 
-    _deletionQueue.push_function([&]() { vkDestroyImageView(_device->device(), _imageViews[i], nullptr); });
+  for (auto &imageView : _imageViews) {
+    _deletionQueue.push_back([&]() { vkDestroyImageView(_device->device(), imageView, nullptr); });
   }
 }
 
@@ -154,7 +156,7 @@ void Renderer::createRenderPass() {
   depthAttachmentRef.attachment = 1;
   depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-  VkSubpassDependency dependency{};
+  VkSubpassDependency dependency = {};
   dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
   dependency.dstSubpass = 0;
   dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -198,8 +200,8 @@ void Renderer::createDepthResources() {
   _device->transitionImageLayout(_depthImage, depthFormat, 1, VK_IMAGE_LAYOUT_UNDEFINED,
                                  VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-  _deletionQueue.push_function([&]() { vkDestroyImageView(_device->device(), _depthImageView, nullptr); });
-  _deletionQueue.push_function([&]() { vmaDestroyImage(_device->allocator(), _depthImage, _depthAllocation); });
+  _deletionQueue.push_back([&]() { vkDestroyImageView(_device->device(), _depthImageView, nullptr); });
+  _deletionQueue.push_back([&]() { vmaDestroyImage(_device->allocator(), _depthImage, _depthAllocation); });
 }
 
 void Renderer::createFramebuffers() {
@@ -219,8 +221,10 @@ void Renderer::createFramebuffers() {
     if (vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
       throw std::runtime_error("failed to create framebuffer");
     }
+  }
 
-    _deletionQueue.push_function([&]() { vkDestroyFramebuffer(_device->device(), _framebuffers[i], nullptr); });
+  for (auto &framebuffer : _framebuffers) {
+    _deletionQueue.push_back([&]() { vkDestroyFramebuffer(_device->device(), framebuffer, nullptr); });
   }
 }
 
@@ -384,6 +388,7 @@ void Renderer::recreate() {
 
   _deletionQueue.flush();
 
+  _oldSwapchain = _swapchain;
   createSwapchain();
   createImageViews();
   createDepthResources();
