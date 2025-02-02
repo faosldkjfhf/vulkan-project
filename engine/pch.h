@@ -1,6 +1,6 @@
 #pragma once
 
-#include "force.h"
+#include "iforce.h"
 #include <array>
 #include <cstring>
 #include <fstream>
@@ -22,6 +22,11 @@
 
 #include "tiny_obj_loader.h"
 #include "vk_mem_alloc.h"
+
+namespace bisky {
+template <typename T> using Vector = std::vector<T>;
+template <typename T> using Pointer = std::shared_ptr<T>;
+} // namespace bisky
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> queueFamily;

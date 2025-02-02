@@ -1,15 +1,15 @@
 #pragma once
 
-#include "callbacks.h"
 #include "core/device.h"
 #include "core/pipeline.h"
 #include "core/window.h"
+#include "icallbacks.h"
 #include "pch.h"
 #include "rendering/renderer.h"
 
 namespace bisky {
 
-class Engine : public Callbacks {
+class Engine : public ICallbacks {
 public:
   Engine();
   ~Engine();
@@ -21,6 +21,8 @@ private:
   void update();
   void render();
 
+  void createDefaultScene();
+
   void initialize();
   void cleanup();
 
@@ -29,10 +31,12 @@ private:
   virtual void onClick(int button, int action, int mods) override;
   virtual void onMouseMove(double xpos, double ypos) override;
 
-  core::Window _window{800, 600, "Bisky Engine", this};
-  core::Device _device{_window};
-  rendering::Renderer _renderer{_window, _device};
-  core::Pipeline _pipeline{_window, _device, _renderer};
+  Pointer<core::Window> _window;
+  Pointer<core::Device> _device;
+  Pointer<rendering::Renderer> _renderer;
+  Pointer<core::Pipeline> _pipeline;
+
+  Vector<Pointer<core::Model>> _models;
 };
 
 } // namespace bisky

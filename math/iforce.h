@@ -2,10 +2,10 @@
 
 namespace math {
 
-class Force {
+class IForce {
 public:
-  Force();
-  virtual ~Force() = 0;
+  IForce();
+  virtual ~IForce() = 0;
 
 private:
   virtual void apply() = 0;

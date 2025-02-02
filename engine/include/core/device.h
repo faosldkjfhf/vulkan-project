@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/deletion_queue.h"
 #include "pch.h"
 
 namespace bisky {
@@ -10,7 +11,7 @@ class Window;
 class Device {
 
 public:
-  Device(Window &window);
+  Device(Pointer<Window> window);
   ~Device();
 
   void cleanup();
@@ -29,6 +30,19 @@ public:
   VkCommandPool commandPool() { return _commandPool; }
   VmaAllocator allocator() { return _allocator; }
 
+  void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryAllocateFlags properties, VkBuffer &buffer,
+                    VmaAllocation &allocation);
+  VkCommandBuffer beginSingleTimeCommands();
+  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
+  void copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+  void copyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+  VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
+  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
+                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image,
+                   VmaAllocation &imageAllocation);
+  void transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, VkImageLayout oldLayout,
+                             VkImageLayout newLayout);
+
 private:
   void initialize();
   void createInstance();
@@ -45,7 +59,8 @@ private:
   bool isDeviceSuitable(VkPhysicalDevice device);
   bool checkDeviceExtensionSupport(VkPhysicalDevice device);
 
-  Window &_window;
+  Pointer<Window> _window;
+
   VkInstance _instance;
   VkPhysicalDevice _physicalDevice;
   VkDevice _device;
@@ -55,6 +70,8 @@ private:
   VkQueue _queue;
   VkCommandPool _commandPool;
   VmaAllocator _allocator;
+
+  DeletionQueue _deletionQueue;
 };
 
 } // namespace core

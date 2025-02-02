@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/deletion_queue.h"
 #include "core/device.h"
 #include "core/model.h"
 #include "core/pipeline.h"
@@ -21,27 +22,15 @@ constexpr int MAX_FRAMES_IN_FLIGHT = 2;
 
 class Renderer {
 public:
-  Renderer(core::Window &window, core::Device &device);
+  Renderer(Pointer<core::Window> window, Pointer<core::Device> device, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
   ~Renderer();
 
   void cleanup();
-  void cleanupSwapchain();
-
-  void addModel(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices);
-  void addModel(const char *objPath);
-
-  VkImageView createImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, uint32_t mipLevels);
-  void createImage(uint32_t width, uint32_t height, uint32_t mipLevels, VkFormat format, VkImageTiling tiling,
-                   VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage &image,
-                   VmaAllocation &imageAllocation);
-  void transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, VkImageLayout oldLayout,
-                             VkImageLayout newLayout);
+  // void cleanupSwapchain();
 
   VkCommandBuffer beginRenderPass(uint32_t imageIndex);
   void endRenderPass(VkCommandBuffer commandBuffer);
-  VkCommandBuffer beginSingleTimeCommands();
-  void endSingleTimeCommands(VkCommandBuffer commandBuffer);
-  void draw(core::Pipeline &pipeline, VkCommandBuffer commandBuffer);
+  void draw(VkCommandBuffer commandBuffer);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
@@ -58,6 +47,7 @@ public:
   void setFramebufferResized(bool val) { _framebufferResized = val; }
   uint32_t currentFrame() { return _currentFrame; }
   float aspectRatio() { return _extent.width / (float)_extent.height; }
+  VkCommandBuffer currentCommandBuffer() { return _commandBuffers[_currentFrame]; }
 
 private:
   void initialize();
@@ -74,12 +64,11 @@ private:
   VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> &availablePresentModes);
   VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR &capabilities);
 
-  bool hasStencilComponent(VkFormat format);
-
-  core::Window &_window;
-  core::Device &_device;
+  Pointer<core::Window> _window;
+  Pointer<core::Device> _device;
 
   VkSwapchainKHR _swapchain;
+  VkSwapchainKHR _oldSwapchain;
   VkRenderPass _renderPass;
   std::vector<VkImage> _images;
   std::vector<VkImageView> _imageViews;
@@ -98,7 +87,7 @@ private:
   uint32_t _currentFrame = 0;
   bool _framebufferResized = false;
 
-  std::vector<core::Model> _models;
+  core::DeletionQueue _deletionQueue;
 };
 
 } // namespace rendering

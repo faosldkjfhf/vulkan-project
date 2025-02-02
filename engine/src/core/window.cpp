@@ -3,7 +3,7 @@
 namespace bisky {
 namespace core {
 
-Window::Window(int width, int height, const char *title, Callbacks *callbacks) {
+Window::Window(int width, int height, const char *title, ICallbacks *callbacks) {
   if (!glfwInit()) {
     throw std::runtime_error("failed to init glfw");
   }
@@ -17,11 +17,11 @@ Window::Window(int width, int height, const char *title, Callbacks *callbacks) {
 
   glfwSetWindowUserPointer(_window, callbacks);
   glfwSetKeyCallback(_window, [](GLFWwindow *window, int key, int scancode, int action, int mods) {
-    reinterpret_cast<Callbacks *>(glfwGetWindowUserPointer(window))->onKey(key, scancode, action, mods);
+    reinterpret_cast<ICallbacks *>(glfwGetWindowUserPointer(window))->onKey(key, scancode, action, mods);
   });
 
   glfwSetFramebufferSizeCallback(_window, [](GLFWwindow *window, int width, int height) {
-    reinterpret_cast<Callbacks *>(glfwGetWindowUserPointer(window))->onResize(width, height);
+    reinterpret_cast<ICallbacks *>(glfwGetWindowUserPointer(window))->onResize(width, height);
   });
 }
 

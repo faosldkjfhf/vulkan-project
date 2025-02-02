@@ -2,7 +2,7 @@
 
 namespace bisky {
 
-class Callbacks {
+class ICallbacks {
 public:
   virtual void onKey(int key, int scancode, int action, int mods) = 0;
   virtual void onResize(int width, int height) = 0;
