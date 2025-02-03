@@ -25,6 +25,7 @@ public:
   VkPhysicalDevice physicalDevice() { return _physicalDevice; }
   VkInstance instance() { return _instance; }
   QueueFamilyIndices indices() { return _indices; }
+  uint32_t queueFamily() { return _indices.queueFamily.value(); }
   VkQueue queue() { return _queue; }
   VkSurfaceKHR surface() { return _surface; }
   VkCommandPool commandPool() { return _commandPool; }

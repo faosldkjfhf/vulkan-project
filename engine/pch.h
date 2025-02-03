@@ -45,6 +45,13 @@ struct QueueFamilyIndices {
   bool isComplete() { return queueFamily.has_value(); }
 };
 
+struct FrameData {
+  VkCommandPool commandPool;
+  VkCommandBuffer mainCommandBuffer;
+};
+
+constexpr uint32_t FRAME_OVERLAP = 2;
+
 struct SwapchainSupportDetails {
   VkSurfaceCapabilitiesKHR capabilities;
   std::vector<VkSurfaceFormatKHR> formats;

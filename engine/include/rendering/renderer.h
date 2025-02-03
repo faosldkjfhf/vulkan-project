@@ -46,9 +46,11 @@ public:
   void setFramebufferResized(bool val) { _framebufferResized = val; }
   uint32_t currentFrame() { return _currentFrame; }
   float aspectRatio() { return _extent.width / (float)_extent.height; }
-  VkCommandBuffer currentCommandBuffer() { return _commandBuffers[_currentFrame]; }
+  VkCommandBuffer currentCommandBuffer() { return _frames[_currentFrame].mainCommandBuffer; }
   VkImageView currentImageView() { return _imageViews[_currentFrame]; }
   VkImage currentImage() { return _images[_currentFrame]; }
+
+  FrameData &getCurrentFrame() { return _frames[_currentFrame]; }
 
 private:
   void initialize();
@@ -58,7 +60,8 @@ private:
   void createRenderPass();
   void createDepthResources();
   void createFramebuffers();
-  void createCommandBuffers();
+  void initializeCommands();
+  // void createCommandBuffers();
   void createSyncObjects();
   void recreate();
 
@@ -82,7 +85,8 @@ private:
   VmaAllocation _depthAllocation;
   VkImageView _depthImageView;
 
-  std::vector<VkCommandBuffer> _commandBuffers;
+  FrameData _frames[FRAME_OVERLAP];
+  // std::vector<VkCommandBuffer> _commandBuffers;
   std::vector<VkSemaphore> _imageAvailableSemaphores;
   std::vector<VkSemaphore> _renderFinishedSemaphores;
   std::vector<VkFence> _inFlightFences;

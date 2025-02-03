@@ -2,6 +2,7 @@
 #include "core/pipeline.h"
 #include "core/window.h"
 #include "pch.h"
+#include "utils/init.h"
 
 #include <algorithm>
 #include <limits>
@@ -25,7 +26,8 @@ void Renderer::initialize() {
   createRenderPass();
   createDepthResources();
   createFramebuffers();
-  createCommandBuffers();
+  initializeCommands();
+  // createCommandBuffers();
   createSyncObjects();
 }
 
@@ -36,6 +38,8 @@ void Renderer::cleanup() {
     vkDestroySemaphore(_device->device(), _imageAvailableSemaphores[i], nullptr);
     vkDestroySemaphore(_device->device(), _renderFinishedSemaphores[i], nullptr);
     vkDestroyFence(_device->device(), _inFlightFences[i], nullptr);
+
+    vkDestroyCommandPool(_device->device(), _frames[i].commandPool, nullptr);
   }
 
   vkDestroyRenderPass(_device->device(), _renderPass, nullptr);
@@ -224,16 +228,28 @@ void Renderer::createFramebuffers() {
   }
 }
 
-void Renderer::createCommandBuffers() {
-  _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+void Renderer::initializeCommands() {
+  VkCommandPoolCreateInfo commandPoolInfo =
+      init::commandPoolCreateInfo(_device->queueFamily(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
-  VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-  allocInfo.commandBufferCount = static_cast<uint32_t>(_commandBuffers.size());
-  allocInfo.commandPool = _device->commandPool();
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
+    VK_CHECK(vkCreateCommandPool(_device->device(), &commandPoolInfo, nullptr, &_frames[i].commandPool));
 
-  VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, _commandBuffers.data()));
+    VkCommandBufferAllocateInfo allocInfo = init::commandBufferAllocateInfo(_frames[i].commandPool);
+    VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, &_frames[i].mainCommandBuffer));
+  }
 }
+
+// void Renderer::createCommandBuffers() {
+//   _commandBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+//
+//   VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+//   allocInfo.commandBufferCount = static_cast<uint32_t>(_commandBuffers.size());
+//   allocInfo.commandPool = _device->commandPool();
+//   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+//
+//   VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, _commandBuffers.data()));
+// }
 
 void Renderer::createSyncObjects() {
   _imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
