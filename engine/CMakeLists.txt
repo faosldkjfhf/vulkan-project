@@ -2,6 +2,9 @@ find_package(glfw3 3.4 REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(glm REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(fmt REQUIRED)
+
+# add_subdirectory(libs/fmt EXCLUDE_FROM_ALL)
 
 if (APPLE)
   set(SLANG_VERSION "2025.3.1")
@@ -36,5 +39,5 @@ if (APPLE)
 endif()
 
 target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/stb libs/tinyobjloader libs/imgui libs/imgui/backends)
-target_link_libraries(engine PRIVATE math slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
+target_link_libraries(engine PRIVATE math fmt::fmt-header-only slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)

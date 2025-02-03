@@ -29,6 +29,8 @@ void Renderer::initialize() {
   createSyncObjects();
 }
 
+void Renderer::initializeImgui() {}
+
 void Renderer::cleanup() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     vkDestroySemaphore(_device->device(), _imageAvailableSemaphores[i], nullptr);
@@ -106,9 +108,7 @@ void Renderer::createSwapchain() {
   createInfo.clipped = VK_TRUE;
   createInfo.oldSwapchain = _oldSwapchain;
 
-  if (vkCreateSwapchainKHR(_device->device(), &createInfo, nullptr, &_swapchain) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create swapchain");
-  }
+  VK_CHECK(vkCreateSwapchainKHR(_device->device(), &createInfo, nullptr, &_swapchain));
 
   vkGetSwapchainImagesKHR(_device->device(), _swapchain, &imageCount, nullptr);
   _images.resize(imageCount);
@@ -183,9 +183,7 @@ void Renderer::createRenderPass() {
   renderPassInfo.dependencyCount = 1;
   renderPassInfo.pDependencies = &dependency;
 
-  if (vkCreateRenderPass(_device->device(), &renderPassInfo, nullptr, &_renderPass) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create render pass");
-  }
+  VK_CHECK(vkCreateRenderPass(_device->device(), &renderPassInfo, nullptr, &_renderPass));
 }
 
 void Renderer::createDepthResources() {
@@ -218,9 +216,7 @@ void Renderer::createFramebuffers() {
     framebufferInfo.height = _extent.height;
     framebufferInfo.layers = 1;
 
-    if (vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create framebuffer");
-    }
+    VK_CHECK(vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]));
   }
 
   for (auto &framebuffer : _framebuffers) {
@@ -236,9 +232,7 @@ void Renderer::createCommandBuffers() {
   allocInfo.commandPool = _device->commandPool();
   allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 
-  if (vkAllocateCommandBuffers(_device->device(), &allocInfo, _commandBuffers.data()) != VK_SUCCESS) {
-    throw std::runtime_error("failed to allocate command buffer");
-  }
+  VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, _commandBuffers.data()));
 }
 
 void Renderer::createSyncObjects() {
@@ -252,11 +246,9 @@ void Renderer::createSyncObjects() {
   fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    if (vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]) != VK_SUCCESS ||
-        vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]) != VK_SUCCESS ||
-        vkCreateFence(_device->device(), &fenceInfo, nullptr, &_inFlightFences[i]) != VK_SUCCESS) {
-      throw std::runtime_error("failed to create semaphores");
-    }
+    VK_CHECK(vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_renderFinishedSemaphores[i]));
+    VK_CHECK(vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_imageAvailableSemaphores[i]));
+    VK_CHECK(vkCreateFence(_device->device(), &fenceInfo, nullptr, &_inFlightFences[i]));
   }
 }
 
@@ -268,9 +260,7 @@ VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
   beginInfo.flags = 0;
   beginInfo.pInheritanceInfo = nullptr;
 
-  if (vkBeginCommandBuffer(buffer, &beginInfo) != VK_SUCCESS) {
-    throw std::runtime_error("failed to begin command buffer");
-  }
+  VK_CHECK(vkBeginCommandBuffer(buffer, &beginInfo));
 
   VkRenderPassBeginInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
   renderPassInfo.renderPass = _renderPass;
@@ -293,9 +283,7 @@ VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
 void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   vkCmdEndRenderPass(commandBuffer);
 
-  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-    throw std::runtime_error("failed to end command buffer");
-  }
+  VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
   VkSemaphore waitSemaphores[] = {_imageAvailableSemaphores[_currentFrame]};
   VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
@@ -310,9 +298,7 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   submitInfo.commandBufferCount = 1;
   submitInfo.pCommandBuffers = &commandBuffer;
 
-  if (vkQueueSubmit(_device->queue(), 1, &submitInfo, _inFlightFences[_currentFrame]) != VK_SUCCESS) {
-    throw std::runtime_error("failed to submit draw command buffer");
-  }
+  VK_CHECK(vkQueueSubmit(_device->queue(), 1, &submitInfo, _inFlightFences[_currentFrame]));
 }
 
 void Renderer::draw(VkCommandBuffer commandBuffer) {

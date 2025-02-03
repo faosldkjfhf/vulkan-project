@@ -40,16 +40,19 @@ public:
 
   VkSwapchainKHR swapchain() { return _swapchain; }
   VkRenderPass renderPass() { return _renderPass; }
-  VkFormat format() { return _format; }
-  VkExtent2D extent() { return _extent; }
+  const VkFormat &format() { return _format; }
+  const VkExtent2D &extent() { return _extent; }
   bool framebufferResized() { return _framebufferResized; }
   void setFramebufferResized(bool val) { _framebufferResized = val; }
   uint32_t currentFrame() { return _currentFrame; }
   float aspectRatio() { return _extent.width / (float)_extent.height; }
   VkCommandBuffer currentCommandBuffer() { return _commandBuffers[_currentFrame]; }
+  VkImageView currentImageView() { return _imageViews[_currentFrame]; }
+  VkImage currentImage() { return _images[_currentFrame]; }
 
 private:
   void initialize();
+  void initializeImgui();
   void createSwapchain();
   void createImageViews();
   void createRenderPass();

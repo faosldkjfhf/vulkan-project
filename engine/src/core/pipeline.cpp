@@ -128,9 +128,7 @@ void Pipeline::createDescriptorSetLayout() {
   layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
   layoutInfo.pBindings = bindings.data();
 
-  if (vkCreateDescriptorSetLayout(_device->device(), &layoutInfo, nullptr, &_descriptorSetLayout) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create descriptor set layout");
-  }
+  VK_CHECK(vkCreateDescriptorSetLayout(_device->device(), &layoutInfo, nullptr, &_descriptorSetLayout));
 }
 
 void Pipeline::createPipelineLayout() {
@@ -145,9 +143,7 @@ void Pipeline::createPipelineLayout() {
   pipelineLayoutInfo.pushConstantRangeCount = 1;
   pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
 
-  if (vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_pipelineLayout) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create pipeline layout");
-  }
+  VK_CHECK(vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_pipelineLayout));
 }
 
 void Pipeline::updateUniformBuffer(uint32_t imageIndex, void *data, size_t size) {
@@ -174,10 +170,7 @@ void Pipeline::createGraphicsPipeline() {
   pipelineInfo.subpass = _config.subpass;
   pipelineInfo.layout = _pipelineLayout;
 
-  if (vkCreateGraphicsPipelines(_device->device(), nullptr, 1, &pipelineInfo, nullptr, &_graphicsPipeline) !=
-      VK_SUCCESS) {
-    throw std::runtime_error("failed to create graphics pipeline");
-  }
+  VK_CHECK(vkCreateGraphicsPipelines(_device->device(), nullptr, 1, &pipelineInfo, nullptr, &_graphicsPipeline));
 }
 
 void Pipeline::createUniformBuffers() {
@@ -250,9 +243,7 @@ void Pipeline::createTextureImageSampler() {
   samplerInfo.minLod = 0.0f;
   samplerInfo.maxLod = VK_LOD_CLAMP_NONE;
 
-  if (vkCreateSampler(_device->device(), &samplerInfo, nullptr, &_textureSampler) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create sampler");
-  }
+  VK_CHECK(vkCreateSampler(_device->device(), &samplerInfo, nullptr, &_textureSampler));
 }
 
 void Pipeline::generateMipmaps(VkImage image, VkFormat format, int32_t width, int32_t height, uint32_t mipLevels) {
@@ -342,9 +333,7 @@ void Pipeline::createDescriptorPool() {
   poolInfo.poolSizeCount = static_cast<uint32_t>(_config.descriptorTypes.size());
   poolInfo.maxSets = static_cast<uint32_t>(rendering::MAX_FRAMES_IN_FLIGHT);
 
-  if (vkCreateDescriptorPool(_device->device(), &poolInfo, nullptr, &_descriptorPool) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create descriptor pool");
-  }
+  VK_CHECK(vkCreateDescriptorPool(_device->device(), &poolInfo, nullptr, &_descriptorPool));
 }
 
 void Pipeline::createDescriptorSets() {
@@ -355,9 +344,7 @@ void Pipeline::createDescriptorSets() {
   allocInfo.pSetLayouts = layouts.data();
 
   _descriptorSets.resize(rendering::MAX_FRAMES_IN_FLIGHT);
-  if (vkAllocateDescriptorSets(_device->device(), &allocInfo, _descriptorSets.data()) != VK_SUCCESS) {
-    throw std::runtime_error("failed to allocate descriptor sets!");
-  }
+  VK_CHECK(vkAllocateDescriptorSets(_device->device(), &allocInfo, _descriptorSets.data()));
 
   for (size_t i = 0; i < rendering::MAX_FRAMES_IN_FLIGHT; i++) {
     VkDescriptorBufferInfo bufferInfo = {};

@@ -1,9 +1,7 @@
 #include "core/window.h"
 
 #include "core/device.h"
-#include "pch.h"
 #include "utils/utils.h"
-#include <vulkan/vulkan_core.h>
 
 namespace bisky {
 namespace core {
@@ -34,10 +32,7 @@ void Device::initialize() {
   allocatorCreateInfo.instance = _instance;
   allocatorCreateInfo.pVulkanFunctions = &vulkanFunctions;
 
-  if (vmaCreateAllocator(&allocatorCreateInfo, &_allocator) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create allocator");
-  }
-
+  VK_CHECK(vmaCreateAllocator(&allocatorCreateInfo, &_allocator));
   _deletionQueue.push_back([&]() { vmaDestroyAllocator(_allocator); });
 }
 
@@ -51,9 +46,7 @@ void Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryA
   allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
   allocInfo.flags = properties;
 
-  if (vmaCreateBuffer(_allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create buffer");
-  }
+  VK_CHECK(vmaCreateBuffer(_allocator, &bufferInfo, &allocInfo, &buffer, &allocation, nullptr));
 }
 
 VkCommandBuffer Device::beginSingleTimeCommands() {
@@ -133,9 +126,7 @@ VkImageView Device::createImageView(VkImage image, VkFormat format, VkImageAspec
   viewInfo.subresourceRange.baseArrayLayer = 0;
   viewInfo.subresourceRange.layerCount = 1;
 
-  if (vkCreateImageView(_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create image view");
-  }
+  VK_CHECK(vkCreateImageView(_device, &viewInfo, nullptr, &imageView));
 
   return imageView;
 }
@@ -163,9 +154,7 @@ void Device::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, Vk
   allocInfo.flags = properties;
   allocInfo.priority = 1.0f;
 
-  if (vmaCreateImage(_allocator, &imageInfo, &allocInfo, &image, &imageAllocation, nullptr) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create texture image");
-  }
+  VK_CHECK(vmaCreateImage(_allocator, &imageInfo, &allocInfo, &image, &imageAllocation, nullptr));
 }
 
 void Device::transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, VkImageLayout oldLayout,
@@ -235,7 +224,7 @@ void Device::createInstance() {
   appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
   appInfo.pEngineName = "Bisky Engine";
   appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  appInfo.apiVersion = VK_API_VERSION_1_4;
+  appInfo.apiVersion = VK_API_VERSION_1_3;
 
   VkInstanceCreateInfo createInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
   createInfo.pApplicationInfo = &appInfo;
@@ -274,18 +263,13 @@ void Device::setupDebugMessenger() {
   VkDebugUtilsMessengerCreateInfoEXT createInfo;
   utils::populateDebugMessengerCreateInfo(createInfo);
 
-  if (utils::createDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger) != VK_SUCCESS) {
-    throw std::runtime_error("failed to setup debug messenger");
-  }
+  VK_CHECK(utils::createDebugUtilsMessengerEXT(_instance, &createInfo, nullptr, &_debugMessenger));
 
   _deletionQueue.push_back([&]() { utils::destroyDebugUtilsMessengerEXT(_instance, _debugMessenger, nullptr); });
 }
 
 void Device::createWindowSurface() {
-  if (glfwCreateWindowSurface(_instance, _window->window(), nullptr, &_surface) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create window surface");
-  }
-
+  VK_CHECK(glfwCreateWindowSurface(_instance, _window->window(), nullptr, &_surface));
   _deletionQueue.push_back([&]() { vkDestroySurfaceKHR(_instance, _surface, nullptr); });
 }
 
@@ -326,6 +310,10 @@ void Device::createLogicalDevice() {
   extensions.push_back("VK_KHR_portability_subset");
 #endif
 
+  for (auto &extensionName : extensions) {
+    fmt::println("[extension] {}", extensionName);
+  }
+
   VkDeviceCreateInfo createInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
   createInfo.queueCreateInfoCount = 1;
   createInfo.pQueueCreateInfos = &queueCreateInfo;
@@ -333,9 +321,7 @@ void Device::createLogicalDevice() {
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
 
-  if (vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create device");
-  }
+  VK_CHECK(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 
   vkGetDeviceQueue(_device, _indices.queueFamily.value(), 0, &_queue);
 
@@ -450,10 +436,7 @@ void Device::createCommandPool() {
   poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
   poolInfo.queueFamilyIndex = _indices.queueFamily.value();
 
-  if (vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool) != VK_SUCCESS) {
-    throw std::runtime_error("failed to create command pool");
-  }
-
+  VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool));
   _deletionQueue.push_back([&]() { vkDestroyCommandPool(_device, _commandPool, nullptr); });
 }
 

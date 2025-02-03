@@ -24,6 +24,7 @@ private:
   void createDefaultScene();
 
   void initialize();
+  void initializeImgui();
   void cleanup();
 
   virtual void onKey(int key, int scancode, int action, int mods) override;
@@ -35,6 +36,8 @@ private:
   Pointer<core::Device> _device;
   Pointer<rendering::Renderer> _renderer;
   Pointer<core::Pipeline> _pipeline;
+
+  VkDescriptorPool _imguiPool;
 
   Vector<Pointer<core::Model>> _models;
 };

@@ -13,6 +13,7 @@
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
+#include <vulkan/vk_enum_string_helper.h>
 
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #define GLM_ENABLE_EXPERIMENTAL
@@ -20,8 +21,18 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 
-#include "tiny_obj_loader.h"
-#include "vk_mem_alloc.h"
+#include <fmt/core.h>
+#include <tiny_obj_loader.h>
+#include <vk_mem_alloc.h>
+
+#define VK_CHECK(x)                                                                                                    \
+  do {                                                                                                                 \
+    VkResult err = x;                                                                                                  \
+    if (err) {                                                                                                         \
+      fmt::print("[ERROR]: {}", string_VkResult(err));                                                                 \
+      abort();                                                                                                         \
+    }                                                                                                                  \
+  } while (0)
 
 namespace bisky {
 template <typename T> using Vector = std::vector<T>;

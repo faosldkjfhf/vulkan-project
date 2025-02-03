@@ -4,10 +4,14 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "rendering/renderer.h"
+#include "utils/utils.h"
 
 namespace bisky {
 
-Engine::Engine() { initialize(); }
+Engine::Engine() {
+  initialize();
+  initializeImgui();
+}
 
 Engine::~Engine() { cleanup(); }
 
@@ -87,7 +91,31 @@ void Engine::initialize() {
                                                 "fragMain", config);
 
   createDefaultScene();
+}
 
+void Engine::initializeImgui() {
+  // VkDescriptorPoolSize poolSizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+  //                                     {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+  //
+  // VkDescriptorPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+  // poolInfo.pPoolSizes = poolSizes;
+  // poolInfo.poolSizeCount = std::size(poolSizes);
+  // poolInfo.maxSets = 1000;
+  // poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+  //
+  // if (vkCreateDescriptorPool(_device->device(), &poolInfo, nullptr, &_imguiPool) != VK_SUCCESS) {
+  //   throw std::runtime_error("failed to create imgui descriptor pool");
+  // }
+  //
   // IMGUI_CHECKVERSION();
   // ImGui::CreateContext();
   // ImGuiIO &io = ImGui::GetIO();
@@ -95,21 +123,23 @@ void Engine::initialize() {
   // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
   //
   // ImGui_ImplGlfw_InitForVulkan(_window->window(), true);
+  //
   // ImGui_ImplVulkan_InitInfo initInfo = {};
   // initInfo.Instance = _device->instance();
   // initInfo.PhysicalDevice = _device->physicalDevice();
   // initInfo.Device = _device->device();
   // initInfo.QueueFamily = _device->indices().queueFamily.value();
   // initInfo.Queue = _device->queue();
-  // initInfo.PipelineCache = VK_NULL_HANDLE;
-  // initInfo.DescriptorPool = _pipeline->descriptorPool();
-  // initInfo.Subpass = 0;
+  // initInfo.DescriptorPool = _imguiPool;
   // initInfo.MinImageCount = 2;
   // initInfo.ImageCount = rendering::MAX_FRAMES_IN_FLIGHT;
   // initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
   // initInfo.Allocator = VK_NULL_HANDLE;
-  // initInfo.CheckVkResultFn = nullptr;
-  // initInfo.RenderPass = _renderer->renderPass();
+  // initInfo.UseDynamicRendering = true;
+  // initInfo.PipelineRenderingCreateInfo = {VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO};
+  // initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+  // initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &_renderer->format();
+  //
   // ImGui_ImplVulkan_Init(&initInfo);
   //
   // VkCommandBuffer commandBuffer = _device->beginSingleTimeCommands();
@@ -133,6 +163,9 @@ void Engine::createDefaultScene() {
 }
 
 void Engine::cleanup() {
+  // ImGui_ImplVulkan_Shutdown();
+  // vkDestroyDescriptorPool(_device->device(), _imguiPool, nullptr);
+
   for (auto model : _models) {
     model->cleanup();
   }
@@ -165,6 +198,16 @@ void Engine::update() {
 }
 
 void Engine::render() {
+  // ImGui_ImplVulkan_NewFrame();
+  // ImGui_ImplGlfw_NewFrame();
+  // ImGui::NewFrame();
+  //
+  // ImGui::Begin("Profiler");
+  // ImGui::Text("hi");
+  // ImGui::End();
+  //
+  // ImGui::Render();
+
   // reset fences and wait for next fence
   _renderer->waitForFence();
 
@@ -202,6 +245,24 @@ void Engine::render() {
 
   // end command buffer and render pass
   _renderer->endRenderPass(commandBuffer);
+
+  // commandBuffer = _device->beginSingleTimeCommands();
+  //
+  // // draw imgui
+  // VkRenderingAttachmentInfo colorAttachment = utils::getAttachmentInfo(_renderer->currentImageView(), nullptr);
+  // VkRenderingInfo renderInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
+  // renderInfo.colorAttachmentCount = 1;
+  // renderInfo.pColorAttachments = &colorAttachment;
+  // renderInfo.renderArea.extent = _renderer->extent();
+  // renderInfo.renderArea.offset = {0, 0};
+  // renderInfo.viewMask = 0;
+  // renderInfo.layerCount = 1;
+  //
+  // vkCmdBeginRendering(commandBuffer, &renderInfo);
+  // ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+  // vkCmdEndRendering(commandBuffer);
+  //
+  // _device->endSingleTimeCommands(commandBuffer);
 
   // submit to present queue
   _renderer->present(imageIndex);
