@@ -36,8 +36,8 @@ void Texture::createTextureImage(const char *path) {
                        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _textureImage, _textureAllocation);
 
-  _device->transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB, _mipLevels, VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+  _device->transitionImageLayout(_textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED,
+                                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, _mipLevels);
   _device->copyBufferToImage(stagingBuffer, _textureImage, static_cast<uint32_t>(width), static_cast<uint32_t>(height));
   vmaDestroyBuffer(_device->allocator(), stagingBuffer, stagingAllocation);
 

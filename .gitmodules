@@ -8,3 +8,6 @@
 	path = engine/libs/imgui
 	url = git@github.com:ocornut/imgui.git
 	branch = docking
+[submodule "engine/libs/fmt"]
+	path = engine/libs/fmt
+	url = git@github.com:fmtlib/fmt.git

@@ -1,7 +1,9 @@
 #pragma once
 
 #include "pch.h"
+#include "utils/init.h"
 #include <cstring>
+#include <vulkan/vulkan_core.h>
 
 namespace bisky {
 namespace utils {
@@ -12,10 +14,11 @@ static constexpr bool enableValidationLayers = false;
 static constexpr bool enableValidationLayers = true;
 #endif
 
-const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation"};
+const std::vector<const char *> validationLayers = {"VK_LAYER_KHRONOS_validation", "VK_LAYER_KHRONOS_synchronization2"};
 
 const std::vector<const char *> deviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-                                                    VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME};
+                                                    VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+                                                    VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME};
 
 inline bool hasStencilComponent(VkFormat format) {
   return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
@@ -60,6 +63,7 @@ inline std::vector<const char *> getRequiredExtensions() {
   if (enableValidationLayers) {
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
+  extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 
   return extensions;
 }
@@ -103,6 +107,33 @@ inline void populateDebugMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT 
                            VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
                            VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
   createInfo.pfnUserCallback = debugCallback;
+}
+
+inline void transitionImage(VkCommandBuffer cmd, VkImage image, VkImageLayout currentLayout, VkImageLayout newLayout) {
+  VkImageMemoryBarrier2 imageBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
+  imageBarrier.pNext = nullptr;
+
+  imageBarrier.srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+  imageBarrier.srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT;
+  imageBarrier.dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+  imageBarrier.dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT;
+
+  imageBarrier.oldLayout = currentLayout;
+  imageBarrier.newLayout = newLayout;
+
+  VkImageAspectFlags aspectMask =
+      (newLayout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL) ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
+  imageBarrier.subresourceRange = init::imageSubresourceRange(aspectMask);
+  imageBarrier.image = image;
+
+  VkDependencyInfo depInfo{};
+  depInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO;
+  depInfo.pNext = nullptr;
+
+  depInfo.imageMemoryBarrierCount = 1;
+  depInfo.pImageMemoryBarriers = &imageBarrier;
+
+  vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
 } // namespace utils

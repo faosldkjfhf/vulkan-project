@@ -198,16 +198,6 @@ void Engine::update() {
 }
 
 void Engine::render() {
-  // ImGui_ImplVulkan_NewFrame();
-  // ImGui_ImplGlfw_NewFrame();
-  // ImGui::NewFrame();
-  //
-  // ImGui::Begin("Profiler");
-  // ImGui::Text("hi");
-  // ImGui::End();
-  //
-  // ImGui::Render();
-
   // reset fences and wait for next fence
   _renderer->waitForFence();
 
@@ -234,39 +224,22 @@ void Engine::render() {
   // begin the render pass
   VkCommandBuffer commandBuffer = _renderer->beginRenderPass(imageIndex);
 
-  // submit commands
-  _pipeline->bind(commandBuffer, _renderer->currentFrame());
-  _renderer->setViewportAndScissor(commandBuffer, viewport, scissor);
+  _renderer->draw(commandBuffer, imageIndex);
 
-  for (auto model : _models) {
-    model->bind(commandBuffer);
-    model->draw(commandBuffer);
-  }
+  // submit commands
+  // _pipeline->bind(commandBuffer, _renderer->currentFrame());
+  // _renderer->setViewportAndScissor(commandBuffer, viewport, scissor);
+
+  // for (auto model : _models) {
+  //   model->bind(commandBuffer);
+  //   model->draw(commandBuffer);
+  // }
 
   // end command buffer and render pass
   _renderer->endRenderPass(commandBuffer);
 
-  // commandBuffer = _device->beginSingleTimeCommands();
-  //
-  // // draw imgui
-  // VkRenderingAttachmentInfo colorAttachment = utils::getAttachmentInfo(_renderer->currentImageView(), nullptr);
-  // VkRenderingInfo renderInfo = {VK_STRUCTURE_TYPE_RENDERING_INFO};
-  // renderInfo.colorAttachmentCount = 1;
-  // renderInfo.pColorAttachments = &colorAttachment;
-  // renderInfo.renderArea.extent = _renderer->extent();
-  // renderInfo.renderArea.offset = {0, 0};
-  // renderInfo.viewMask = 0;
-  // renderInfo.layerCount = 1;
-  //
-  // vkCmdBeginRendering(commandBuffer, &renderInfo);
-  // ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
-  // vkCmdEndRendering(commandBuffer);
-  //
-  // _device->endSingleTimeCommands(commandBuffer);
-
   // submit to present queue
   _renderer->present(imageIndex);
-  _renderer->advanceFrame();
 }
 
 void Engine::onKey(int key, int scancode, int action, int mods) {

@@ -2,6 +2,7 @@
 
 #include "core/device.h"
 #include "utils/utils.h"
+#include <vulkan/vulkan_core.h>
 
 namespace bisky {
 namespace core {
@@ -157,8 +158,8 @@ void Device::createImage(uint32_t width, uint32_t height, uint32_t mipLevels, Vk
   VK_CHECK(vmaCreateImage(_allocator, &imageInfo, &allocInfo, &image, &imageAllocation, nullptr));
 }
 
-void Device::transitionImageLayout(VkImage image, VkFormat format, uint32_t mipLevels, VkImageLayout oldLayout,
-                                   VkImageLayout newLayout) {
+void Device::transitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout,
+                                   uint32_t mipLevels) {
   VkCommandBuffer commandBuffer = beginSingleTimeCommands();
 
   VkImageMemoryBarrier barrier{VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
@@ -288,7 +289,7 @@ void Device::pickPhysicalDevice() {
   }
 
   if (_physicalDevice == VK_NULL_HANDLE) {
-    throw std::runtime_error("failed to find a suitable GPU!");
+    throw std::runtime_error("failed to find a suitable GPU");
   }
 }
 
@@ -304,6 +305,10 @@ void Device::createLogicalDevice() {
   VkPhysicalDeviceFeatures deviceFeatures = {};
   deviceFeatures.samplerAnisotropy = VK_TRUE;
 
+  VkPhysicalDeviceSynchronization2Features deviceSynchronizationFeatures = {};
+  deviceSynchronizationFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
+  deviceSynchronizationFeatures.synchronization2 = VK_TRUE;
+
   std::vector<const char *> extensions(utils::deviceExtensions);
 
 #if __APPLE__
@@ -311,7 +316,7 @@ void Device::createLogicalDevice() {
 #endif
 
   for (auto &extensionName : extensions) {
-    fmt::println("[extension] {}", extensionName);
+    fmt::print("[extension] {}\n", extensionName);
   }
 
   VkDeviceCreateInfo createInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
@@ -320,6 +325,7 @@ void Device::createLogicalDevice() {
   createInfo.pEnabledFeatures = &deviceFeatures;
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
+  createInfo.pNext = &deviceSynchronizationFeatures;
 
   VK_CHECK(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 

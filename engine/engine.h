@@ -40,6 +40,8 @@ private:
   VkDescriptorPool _imguiPool;
 
   Vector<Pointer<core::Model>> _models;
+  AllocatedImage _drawImage;
+  VkExtent2D _drawExtent;
 };
 
 } // namespace bisky

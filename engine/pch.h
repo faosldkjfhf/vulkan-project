@@ -1,6 +1,5 @@
 #pragma once
 
-#include "iforce.h"
 #include <array>
 #include <cstring>
 #include <fstream>
@@ -25,6 +24,8 @@
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
 
+#include "core/deletion_queue.h"
+
 #define VK_CHECK(x)                                                                                                    \
   do {                                                                                                                 \
     VkResult err = x;                                                                                                  \
@@ -48,6 +49,19 @@ struct QueueFamilyIndices {
 struct FrameData {
   VkCommandPool commandPool;
   VkCommandBuffer mainCommandBuffer;
+  VkSemaphore swapchainSemaphore;
+  VkSemaphore renderSemaphore;
+  VkFence renderFence;
+
+  bisky::core::DeletionQueue deletionQueue;
+};
+
+struct AllocatedImage {
+  VkImage image;
+  VkImageView imageView;
+  VmaAllocation allocation;
+  VkExtent3D imageExtent;
+  VkFormat imageFormat;
 };
 
 constexpr uint32_t FRAME_OVERLAP = 2;

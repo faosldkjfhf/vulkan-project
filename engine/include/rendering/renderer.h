@@ -29,7 +29,7 @@ public:
 
   VkCommandBuffer beginRenderPass(uint32_t imageIndex);
   void endRenderPass(VkCommandBuffer commandBuffer);
-  void draw(VkCommandBuffer commandBuffer);
+  void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
@@ -49,7 +49,6 @@ public:
   VkCommandBuffer currentCommandBuffer() { return _frames[_currentFrame].mainCommandBuffer; }
   VkImageView currentImageView() { return _imageViews[_currentFrame]; }
   VkImage currentImage() { return _images[_currentFrame]; }
-
   FrameData &getCurrentFrame() { return _frames[_currentFrame]; }
 
 private:
@@ -61,8 +60,7 @@ private:
   void createDepthResources();
   void createFramebuffers();
   void initializeCommands();
-  // void createCommandBuffers();
-  void createSyncObjects();
+  void initializeSyncStructures();
   void recreate();
 
   VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
@@ -86,10 +84,6 @@ private:
   VkImageView _depthImageView;
 
   FrameData _frames[FRAME_OVERLAP];
-  // std::vector<VkCommandBuffer> _commandBuffers;
-  std::vector<VkSemaphore> _imageAvailableSemaphores;
-  std::vector<VkSemaphore> _renderFinishedSemaphores;
-  std::vector<VkFence> _inFlightFences;
   uint32_t _currentFrame = 0;
   bool _framebufferResized = false;
 
