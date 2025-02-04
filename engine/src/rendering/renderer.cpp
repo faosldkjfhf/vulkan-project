@@ -354,14 +354,13 @@ bool Renderer::acquireNextImage(uint32_t *imageIndex) {
 }
 
 void Renderer::present(uint32_t imageIndex) {
-  VkPresentInfoKHR presentInfo{VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+  VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
   presentInfo.waitSemaphoreCount = 1;
   presentInfo.pWaitSemaphores = &getCurrentFrame().renderSemaphore;
 
   presentInfo.swapchainCount = 1;
   presentInfo.pSwapchains = &_swapchain;
   presentInfo.pImageIndices = &imageIndex;
-  presentInfo.pResults = nullptr; // Optional
 
   VkResult result = vkQueuePresentKHR(_device->queue(), &presentInfo);
 
@@ -374,8 +373,6 @@ void Renderer::present(uint32_t imageIndex) {
 
   _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
-
-void Renderer::advanceFrame() { _currentFrame = (_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT; }
 
 void Renderer::waitForFence() {
   vkWaitForFences(_device->device(), 1, &getCurrentFrame().renderFence, VK_TRUE, UINT64_MAX);
@@ -395,7 +392,6 @@ void Renderer::recreate() {
 
   _deletionQueue.flush();
 
-  _oldSwapchain = _swapchain;
   createSwapchain();
   createImageViews();
   createDepthResources();
