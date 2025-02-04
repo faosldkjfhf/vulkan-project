@@ -26,9 +26,8 @@ public:
   VkInstance instance() { return _instance; }
   QueueFamilyIndices indices() { return _indices; }
   uint32_t queueFamily() { return _indices.queueFamily.value(); }
-  VkQueue queue() { return _queue; }
+  const VkQueue &queue() { return _queue; }
   VkSurfaceKHR surface() { return _surface; }
-  VkCommandPool commandPool() { return _commandPool; }
   VmaAllocator allocator() { return _allocator; }
 
   void createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryAllocateFlags properties, VkBuffer &buffer,
@@ -52,10 +51,6 @@ private:
   void pickPhysicalDevice();
   void createLogicalDevice();
 
-  // NOTE: Possible to create 2 command pools
-  // one for short-term allocations, one for long-term
-  void createCommandPool();
-
   QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
   bool isDeviceSuitable(VkPhysicalDevice device);
   bool checkDeviceExtensionSupport(VkPhysicalDevice device);
@@ -69,7 +64,6 @@ private:
   VkDebugUtilsMessengerEXT _debugMessenger;
   QueueFamilyIndices _indices;
   VkQueue _queue;
-  VkCommandPool _commandPool;
   VmaAllocator _allocator;
 
   DeletionQueue _deletionQueue;

@@ -43,7 +43,6 @@ public:
   const VkExtent2D &extent() { return _extent; }
   bool framebufferResized() { return _framebufferResized; }
   void setFramebufferResized(bool val) { _framebufferResized = val; }
-  uint32_t currentFrame() { return _currentFrame; }
   float aspectRatio() { return _extent.width / (float)_extent.height; }
   VkCommandBuffer currentCommandBuffer() { return _frames[_currentFrame].mainCommandBuffer; }
   VkImageView currentImageView() { return _imageViews[_currentFrame]; }
@@ -72,9 +71,9 @@ private:
   VkSwapchainKHR _swapchain;
   VkSwapchainKHR _oldSwapchain;
   VkRenderPass _renderPass;
-  std::vector<VkImage> _images;
-  std::vector<VkImageView> _imageViews;
-  std::vector<VkFramebuffer> _framebuffers;
+  Vector<VkImage> _images;
+  Vector<VkImageView> _imageViews;
+  Vector<VkFramebuffer> _framebuffers;
   VkFormat _format;
   VkExtent2D _extent;
 

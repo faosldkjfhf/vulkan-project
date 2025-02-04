@@ -24,9 +24,9 @@ Renderer::~Renderer() {}
 void Renderer::initialize() {
   createSwapchain();
   createImageViews();
-  createRenderPass();
-  createDepthResources();
-  createFramebuffers();
+  // createRenderPass();
+  // createDepthResources();
+  // createFramebuffers();
   initializeCommands();
   initializeSyncStructures();
 }
@@ -235,7 +235,6 @@ void Renderer::initializeCommands() {
 
   for (uint32_t i = 0; i < FRAME_OVERLAP; i++) {
     VK_CHECK(vkCreateCommandPool(_device->device(), &commandPoolInfo, nullptr, &_frames[i].commandPool));
-
     VkCommandBufferAllocateInfo allocInfo = init::commandBufferAllocateInfo(_frames[i].commandPool);
     VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, &_frames[i].mainCommandBuffer));
   }

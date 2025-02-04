@@ -19,7 +19,6 @@ void Device::initialize() {
   createWindowSurface();
   pickPhysicalDevice();
   createLogicalDevice();
-  createCommandPool();
 
   VmaVulkanFunctions vulkanFunctions = {};
   vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
@@ -51,34 +50,36 @@ void Device::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryA
 }
 
 VkCommandBuffer Device::beginSingleTimeCommands() {
-  VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-  allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-  allocInfo.commandPool = _commandPool;
-  allocInfo.commandBufferCount = 1;
-
+  // VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+  // allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+  // allocInfo.commandPool = _commandPool;
+  // allocInfo.commandBufferCount = 1;
+  //
   VkCommandBuffer commandBuffer;
-  vkAllocateCommandBuffers(_device, &allocInfo, &commandBuffer);
-
-  VkCommandBufferBeginInfo beginInfo{};
-  beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-  beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-  vkBeginCommandBuffer(commandBuffer, &beginInfo);
+  // vkAllocateCommandBuffers(_device, &allocInfo, &commandBuffer);
+  //
+  // VkCommandBufferBeginInfo beginInfo{};
+  // beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+  // beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+  //
+  // vkBeginCommandBuffer(commandBuffer, &beginInfo);
+  //
+  // return commandBuffer;
 
   return commandBuffer;
 }
 
 void Device::endSingleTimeCommands(VkCommandBuffer commandBuffer) {
-  vkEndCommandBuffer(commandBuffer);
-
-  VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &commandBuffer;
-
-  vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
-  vkQueueWaitIdle(_queue);
-
-  vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);
+  // vkEndCommandBuffer(commandBuffer);
+  //
+  // VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+  // submitInfo.commandBufferCount = 1;
+  // submitInfo.pCommandBuffers = &commandBuffer;
+  //
+  // vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+  // vkQueueWaitIdle(_queue);
+  //
+  // vkFreeCommandBuffers(_device, _commandPool, 1, &commandBuffer);
 }
 
 void Device::copyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) {
@@ -353,7 +354,7 @@ QueueFamilyIndices Device::findQueueFamilies(VkPhysicalDevice device) {
     VkBool32 presentSupport = false;
     vkGetPhysicalDeviceSurfaceSupportKHR(device, i, _surface, &presentSupport);
 
-    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT && presentSupport) {
+    if ((queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT) && presentSupport) {
       indices.queueFamily = i;
     }
 
@@ -440,15 +441,6 @@ VkFormat Device::findSupportedFormat(const std::vector<VkFormat> &candidates, Vk
 VkFormat Device::findDepthFormat() {
   return findSupportedFormat({VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT},
                              VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
-}
-
-void Device::createCommandPool() {
-  VkCommandPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
-  poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-  poolInfo.queueFamilyIndex = _indices.queueFamily.value();
-
-  VK_CHECK(vkCreateCommandPool(_device, &poolInfo, nullptr, &_commandPool));
-  _deletionQueue.push_back([&]() { vkDestroyCommandPool(_device, _commandPool, nullptr); });
 }
 
 } // namespace core
