@@ -262,7 +262,7 @@ void Renderer::initializeSyncStructures() {
   }
 }
 
-VkCommandBuffer Renderer::beginRenderPass(uint32_t imageIndex) {
+VkCommandBuffer Renderer::beginRenderPass() {
   VkCommandBuffer commandBuffer = currentCommandBuffer();
   VK_CHECK(vkResetCommandBuffer(commandBuffer, 0));
 

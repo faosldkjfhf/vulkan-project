@@ -27,13 +27,12 @@ public:
 
   void cleanup();
 
-  VkCommandBuffer beginRenderPass(uint32_t imageIndex);
+  VkCommandBuffer beginRenderPass();
   void endRenderPass(VkCommandBuffer commandBuffer);
   void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
-  void advanceFrame();
 
   void waitForFence();
   void resetFence();

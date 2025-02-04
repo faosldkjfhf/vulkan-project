@@ -154,8 +154,9 @@ void Engine::render() {
   }
 
   // begin the render pass
-  VkCommandBuffer commandBuffer = _renderer->beginRenderPass(imageIndex);
+  VkCommandBuffer commandBuffer = _renderer->beginRenderPass();
 
+  // draw
   _renderer->draw(commandBuffer, imageIndex);
 
   // submit commands
