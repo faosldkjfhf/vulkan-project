@@ -43,7 +43,7 @@ void Renderer::cleanup() {
     // vkDestroyCommandPool(_device->device(), _frames[i].commandPool, nullptr);
   }
 
-  vkDestroyRenderPass(_device->device(), _renderPass, nullptr);
+  // vkDestroyRenderPass(_device->device(), _renderPass, nullptr);
 
   _deletionQueue.flush();
 }
