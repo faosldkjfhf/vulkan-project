@@ -29,6 +29,33 @@ void Renderer::initialize() {
   // createFramebuffers();
   initializeCommands();
   initializeSyncStructures();
+
+  VkExtent3D drawImageExtent = {_extent.width, _extent.height, 1};
+
+  _drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+  _drawImage.extent = drawImageExtent;
+
+  VkImageUsageFlags drawImageUsages = {};
+  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  VkImageCreateInfo imgInfo = init::imageCreateInfo(_drawImage.format, drawImageUsages, drawImageExtent);
+  VmaAllocationCreateInfo allocInfo = {};
+  allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+  allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK(
+      vmaCreateImage(_device->allocator(), &imgInfo, &allocInfo, &_drawImage.image, &_drawImage.allocation, nullptr));
+
+  VkImageViewCreateInfo viewInfo =
+      init::imageViewCreateInfo(_drawImage.format, _drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+  VK_CHECK(vkCreateImageView(_device->device(), &viewInfo, nullptr, &_drawImage.imageView));
+
+  _deletionQueue.push_back([&]() {
+    vkDestroyImageView(_device->device(), _drawImage.imageView, nullptr);
+    vmaDestroyImage(_device->allocator(), _drawImage.image, _drawImage.allocation);
+  });
 }
 
 void Renderer::initializeImgui() {}
@@ -36,11 +63,6 @@ void Renderer::initializeImgui() {}
 void Renderer::cleanup() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     _frames[i].deletionQueue.flush();
-    // vkDestroySemaphore(_device->device(), _frames[i].swapchainSemaphore, nullptr);
-    // vkDestroySemaphore(_device->device(), _frames[i].renderSemaphore, nullptr);
-    // vkDestroyFence(_device->device(), _frames[i].renderFence, nullptr);
-    //
-    // vkDestroyCommandPool(_device->device(), _frames[i].commandPool, nullptr);
   }
 
   // vkDestroyRenderPass(_device->device(), _renderPass, nullptr);
@@ -319,7 +341,7 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   // VK_CHECK(vkQueueSubmit(_device->queue(), 1, &submitInfo, _inFlightFences[_currentFrame]));
 }
 
-void Renderer::draw(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   // transition our swapchain image to a general layout
   utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -328,9 +350,27 @@ void Renderer::draw(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   clearValue = {{0.0f, 1.0f, 0.0f, 1.0f}};
   VkImageSubresourceRange clearRange = init::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
   vkCmdClearColorImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
+}
 
-  // transition into a presentable mode
-  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+void Renderer::draw(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
+  _drawExtent.width = _drawImage.extent.width;
+  _drawExtent.height = _drawImage.extent.height;
+
+  utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+
+  clear(commandBuffer, imageIndex);
+
+  utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
+                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+  // execute a copy from the draw image onto the swapchain
+  utils::copyImageToImage(commandBuffer, _drawImage.image, _images[imageIndex], _drawExtent, _extent);
+
+  // set swapchain to present optimal
+  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
 void Renderer::setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor) {
@@ -393,8 +433,8 @@ void Renderer::recreate() {
 
   createSwapchain();
   createImageViews();
-  createDepthResources();
-  createFramebuffers();
+  // createDepthResources();
+  // createFramebuffers();
 }
 
 } // namespace rendering

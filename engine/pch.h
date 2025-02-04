@@ -60,8 +60,8 @@ struct AllocatedImage {
   VkImage image;
   VkImageView imageView;
   VmaAllocation allocation;
-  VkExtent3D imageExtent;
-  VkFormat imageFormat;
+  VkExtent3D extent;
+  VkFormat format;
 };
 
 constexpr uint32_t FRAME_OVERLAP = 2;

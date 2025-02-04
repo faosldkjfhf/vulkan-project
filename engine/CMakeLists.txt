@@ -32,6 +32,7 @@ add_library(engine
   src/core/window.cpp src/core/device.cpp
   src/rendering/renderer.cpp src/core/model.cpp
   src/core/pipeline.cpp src/core/texture.cpp
+  src/core/descriptors.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
   libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp
   libs/imgui/backends/imgui_impl_vulkan.cpp libs/imgui/backends/imgui_impl_glfw.cpp)

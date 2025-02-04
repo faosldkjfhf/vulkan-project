@@ -29,6 +29,7 @@ public:
 
   VkCommandBuffer beginRenderPass();
   void endRenderPass(VkCommandBuffer commandBuffer);
+  void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
@@ -80,6 +81,9 @@ private:
   VkImage _depthImage;
   VmaAllocation _depthAllocation;
   VkImageView _depthImageView;
+
+  AllocatedImage _drawImage;
+  VkExtent2D _drawExtent;
 
   FrameData _frames[FRAME_OVERLAP];
   uint32_t _currentFrame = 0;
