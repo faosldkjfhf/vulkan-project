@@ -309,6 +309,11 @@ void Device::createLogicalDevice() {
   deviceSynchronizationFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
   deviceSynchronizationFeatures.synchronization2 = VK_TRUE;
 
+  VkPhysicalDeviceDynamicRenderingFeatures dynamicRenderingFeatures = {};
+  dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+  dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
+  dynamicRenderingFeatures.pNext = &deviceSynchronizationFeatures;
+
   std::vector<const char *> extensions(utils::deviceExtensions);
 
 #if __APPLE__
@@ -325,7 +330,7 @@ void Device::createLogicalDevice() {
   createInfo.pEnabledFeatures = &deviceFeatures;
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
-  createInfo.pNext = &deviceSynchronizationFeatures;
+  createInfo.pNext = &dynamicRenderingFeatures;
 
   VK_CHECK(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 
