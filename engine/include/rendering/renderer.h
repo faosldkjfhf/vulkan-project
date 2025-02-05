@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/deletion_queue.h"
+#include "core/descriptors.h"
 #include "core/device.h"
 #include "core/model.h"
 #include "core/pipeline.h"
@@ -60,6 +61,7 @@ private:
   void createFramebuffers();
   void initializeCommands();
   void initializeSyncStructures();
+  void initializeDescriptors();
   void recreate();
 
   VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR> &availableFormats);
@@ -82,6 +84,10 @@ private:
   VmaAllocation _depthAllocation;
   VkImageView _depthImageView;
 
+  core::DescriptorAllocator _globalDescriptorAllocator;
+
+  VkDescriptorSet _drawImageDescriptors;
+  VkDescriptorSetLayout _drawImageDescriptorLayout;
   AllocatedImage _drawImage;
   VkExtent2D _drawExtent;
 

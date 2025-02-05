@@ -29,6 +29,7 @@ void Renderer::initialize() {
   // createFramebuffers();
   initializeCommands();
   initializeSyncStructures();
+  initializeDescriptors();
 
   VkExtent3D drawImageExtent = {_extent.width, _extent.height, 1};
 
@@ -283,6 +284,8 @@ void Renderer::initializeSyncStructures() {
   }
 }
 
+void Renderer::initializeDescriptors() {}
+
 VkCommandBuffer Renderer::beginRenderPass() {
   VkCommandBuffer commandBuffer = currentCommandBuffer();
   VK_CHECK(vkResetCommandBuffer(commandBuffer, 0));
@@ -312,10 +315,10 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   VK_CHECK(vkEndCommandBuffer(commandBuffer));
 
   VkCommandBufferSubmitInfo cmdInfo = init::commandBufferSubmitInfo(commandBuffer);
-  VkSemaphoreSubmitInfo waitInfo =
-      init::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, getCurrentFrame().swapchainSemaphore);
   VkSemaphoreSubmitInfo signalInfo =
       init::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT, getCurrentFrame().renderSemaphore);
+  VkSemaphoreSubmitInfo waitInfo =
+      init::semaphoreSubmitInfo(VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT, getCurrentFrame().swapchainSemaphore);
 
   VkSubmitInfo2 submitInfo = init::submitInfo(&cmdInfo, &signalInfo, &waitInfo);
 

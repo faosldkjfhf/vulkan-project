@@ -33,6 +33,7 @@ add_library(engine
   src/rendering/renderer.cpp src/core/model.cpp
   src/core/pipeline.cpp src/core/texture.cpp
   src/core/descriptors.cpp
+  src/rendering/render_graph.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
   libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp
   libs/imgui/backends/imgui_impl_vulkan.cpp libs/imgui/backends/imgui_impl_glfw.cpp)
@@ -43,5 +44,5 @@ if (APPLE)
 endif()
 
 target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/stb libs/tinyobjloader libs/imgui libs/imgui/backends)
-target_link_libraries(engine PRIVATE math fmt::fmt slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
+target_link_libraries(engine PRIVATE fmt::fmt slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)

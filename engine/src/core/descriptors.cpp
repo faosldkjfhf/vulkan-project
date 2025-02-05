@@ -52,11 +52,22 @@ void DescriptorAllocator::initPool(VkDevice device, uint32_t maxSets, std::span<
   VK_CHECK(vkCreateDescriptorPool(device, &poolInfo, nullptr, &pool));
 }
 
-void DescriptorAllocator::clearDescriptors(VkDevice device) {}
+void DescriptorAllocator::clearDescriptors(VkDevice device) { vkResetDescriptorPool(device, pool, 0); }
 
-void DescriptorAllocator::destroyPool(VkDevice device) {}
+void DescriptorAllocator::destroyPool(VkDevice device) { vkDestroyDescriptorPool(device, pool, nullptr); }
 
-VkDescriptorSet DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout) {}
+VkDescriptorSet DescriptorAllocator::allocate(VkDevice device, VkDescriptorSetLayout layout) {
+  VkDescriptorSetAllocateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+  info.descriptorPool = pool;
+  info.descriptorSetCount = 1;
+  info.pSetLayouts = &layout;
+
+  VkDescriptorSet ds;
+  VK_CHECK(vkAllocateDescriptorSets(device, &info, &ds));
+
+  return ds;
+}
 
 } // namespace core
 } // namespace bisky
