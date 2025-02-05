@@ -1,5 +1,5 @@
 #include "core/descriptors.h"
-#include <vulkan/vulkan_core.h>
+#include <span>
 
 namespace bisky {
 namespace core {

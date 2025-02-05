@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/compute_pipeline.h"
 #include "core/deletion_queue.h"
 #include "core/descriptors.h"
 #include "core/device.h"
@@ -31,7 +32,7 @@ public:
   VkCommandBuffer beginRenderPass();
   void endRenderPass(VkCommandBuffer commandBuffer);
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-  void draw(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+  void draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline> computePipeline, uint32_t imageIndex);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
@@ -50,6 +51,8 @@ public:
   VkImageView currentImageView() { return _imageViews[_currentFrame]; }
   VkImage currentImage() { return _images[_currentFrame]; }
   FrameData &getCurrentFrame() { return _frames[_currentFrame]; }
+  const VkDescriptorSetLayout &drawImageLayout() { return _drawImageDescriptorLayout; }
+  const VkDescriptorSet &drawImageDescriptors() { return _drawImageDescriptors; }
 
 private:
   void initialize();

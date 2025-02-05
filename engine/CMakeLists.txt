@@ -26,6 +26,8 @@ else()
 endif()
 
 
+set(CMAKE_CXX_STANDARD 20)
+
 add_library(engine
   engine.cpp
   src/vma.cpp src/stb_image.cpp src/tinyobjloader.cc
@@ -33,6 +35,7 @@ add_library(engine
   src/rendering/renderer.cpp src/core/model.cpp
   src/core/pipeline.cpp src/core/texture.cpp
   src/core/descriptors.cpp
+  src/core/compute_pipeline.cpp
   src/rendering/render_graph.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
   libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp

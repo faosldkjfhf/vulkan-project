@@ -3,6 +3,8 @@
 #include "pch.h"
 #include "utils/init.h"
 #include <cstring>
+#include <fstream>
+#include <slang-com-ptr.h>
 #include <vulkan/vulkan_core.h>
 
 namespace bisky {
@@ -170,6 +172,85 @@ static void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destin
   blitInfo.pRegions = &blitRegion;
 
   vkCmdBlitImage2(cmd, &blitInfo);
+}
+
+static bool loadShaderModule(const char *filePath, VkDevice device, VkShaderModule *outModule) {
+  std::ifstream file(filePath, std::ios::ate | std::ios::binary);
+
+  if (!file.is_open()) {
+    return false;
+  }
+
+  size_t fileSize = (size_t)file.tellg();
+  Vector<uint32_t> buffer(fileSize / sizeof(uint32_t));
+  file.seekg(0);
+  file.read((char *)buffer.data(), fileSize);
+  file.close();
+
+  VkShaderModuleCreateInfo createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  createInfo.codeSize = buffer.size() * sizeof(uint32_t);
+  createInfo.pCode = buffer.data();
+
+  VkShaderModule shaderModule;
+  if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    return false;
+  }
+
+  *outModule = shaderModule;
+  return true;
+}
+
+static bool loadShaderModule(Slang::ComPtr<slang::ISession> session, slang::IModule *module, VkDevice device,
+                             const char *entryPoint, VkShaderModule *outModule) {
+  Slang::ComPtr<slang::IEntryPoint> stageEntryPoint;
+  module->findEntryPointByName(entryPoint, stageEntryPoint.writeRef());
+
+  std::vector<slang::IComponentType *> componentTypes;
+  componentTypes.push_back(module);
+  componentTypes.push_back(stageEntryPoint);
+
+  Slang::ComPtr<slang::IComponentType> composedProgram;
+  {
+    Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+    SlangResult result = session->createCompositeComponentType(componentTypes.data(), componentTypes.size(),
+                                                               composedProgram.writeRef(), diagnosticsBlob.writeRef());
+
+    if (diagnosticsBlob) {
+      fprintf(stdout, "%s\n", (const char *)diagnosticsBlob->getBufferPointer());
+    }
+
+    if (!SLANG_SUCCEEDED(result)) {
+      return false;
+    }
+  }
+
+  Slang::ComPtr<slang::IBlob> spirvCode;
+  {
+    Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+    SlangResult result = composedProgram->getEntryPointCode(0, 0, spirvCode.writeRef(), diagnosticsBlob.writeRef());
+
+    if (diagnosticsBlob) {
+      fprintf(stdout, "%s\n", (const char *)diagnosticsBlob->getBufferPointer());
+    }
+
+    if (!SLANG_SUCCEEDED(result)) {
+      return false;
+    }
+  }
+
+  VkShaderModule shaderModule;
+  VkShaderModuleCreateInfo createInfo = {};
+  createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+  createInfo.codeSize = spirvCode->getBufferSize();
+  createInfo.pCode = static_cast<const uint32_t *>(spirvCode->getBufferPointer());
+
+  if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+    return false;
+  }
+
+  *outModule = shaderModule;
+  return true;
 }
 
 } // namespace utils

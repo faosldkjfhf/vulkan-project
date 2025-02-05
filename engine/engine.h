@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/compute_pipeline.h"
 #include "core/device.h"
 #include "core/pipeline.h"
 #include "core/window.h"
@@ -35,6 +36,7 @@ private:
   Pointer<core::Window> _window;
   Pointer<core::Device> _device;
   Pointer<rendering::Renderer> _renderer;
+  Pointer<core::ComputePipeline> _computePipeline;
   Pointer<core::Pipeline> _pipeline;
 
   VkDescriptorPool _imguiPool;
