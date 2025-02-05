@@ -1,6 +1,16 @@
 [vk::image_format("r16f")]
 RWTexture2D<float4> image;
 
+struct PushConstants {
+  float4 data1;
+  float4 data2;
+  float4 data3;
+  float4 data4;
+};
+
+[vk::push_constant()]
+ConstantBuffer<PushConstants> constants;
+
 [shader("compute")]
 [numthreads(16, 16, 1)]
 void computeMain(uint3 threadId: SV_DispatchThreadID, uint3 localThreadId: SV_GroupThreadID) {

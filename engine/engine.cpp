@@ -64,6 +64,18 @@ void Engine::input() { glfwPollEvents(); }
 void Engine::update() {}
 
 void Engine::render() {
+  // imgui new frame
+  ImGui_ImplVulkan_NewFrame();
+  ImGui_ImplGlfw_NewFrame();
+  ImGui::NewFrame();
+
+  ImGui::Begin("Debug");
+  ImGui::Text("hello");
+  ImGui::End();
+
+  // make imgui calculate internal draw structures
+  ImGui::Render();
+
   // reset fences and wait for next fence
   _renderer->waitForFence();
 

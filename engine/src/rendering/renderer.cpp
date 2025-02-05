@@ -3,6 +3,9 @@
 #include "core/device.h"
 #include "core/pipeline.h"
 #include "core/window.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_vulkan.h"
 #include "pch.h"
 #include "utils/init.h"
 #include "utils/utils.h"
@@ -26,9 +29,6 @@ Renderer::~Renderer() {}
 void Renderer::initialize() {
   createSwapchain();
   createImageViews();
-  // createRenderPass();
-  // createDepthResources();
-  // createFramebuffers();
   initializeCommands();
   initializeSyncStructures();
 
@@ -60,9 +60,60 @@ void Renderer::initialize() {
   });
 
   initializeDescriptors();
+  initializeImgui();
 }
 
-void Renderer::initializeImgui() {}
+void Renderer::initializeImgui() {
+  VkDescriptorPoolSize poolSizes[] = {{VK_DESCRIPTOR_TYPE_SAMPLER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1000},
+                                      {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1000},
+                                      {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1000},
+                                      {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1000},
+                                      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 1000},
+                                      {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, 1000}};
+  VkDescriptorPoolCreateInfo poolInfo = {};
+  poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+  poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+  poolInfo.maxSets = 1000;
+  poolInfo.poolSizeCount = static_cast<uint32_t>(std::size(poolSizes));
+  poolInfo.pPoolSizes = poolSizes;
+
+  VK_CHECK(vkCreateDescriptorPool(_device->device(), &poolInfo, nullptr, &_imguiPool));
+
+  ImGui::CreateContext();
+  ImGuiIO &io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+  io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+  ImGui_ImplGlfw_InitForVulkan(_window->window(), true);
+
+  ImGui_ImplVulkan_InitInfo initInfo = {};
+  initInfo.Device = _device->device();
+  initInfo.Instance = _device->instance();
+  initInfo.PhysicalDevice = _device->physicalDevice();
+  initInfo.Queue = _device->queue();
+  initInfo.DescriptorPool = _imguiPool;
+  initInfo.MinImageCount = 3;
+  initInfo.ImageCount = 3;
+  initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+  initInfo.UseDynamicRendering = true;
+
+  initInfo.PipelineRenderingCreateInfo = {};
+  initInfo.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
+  initInfo.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
+  initInfo.PipelineRenderingCreateInfo.pColorAttachmentFormats = &_format;
+
+  ImGui_ImplVulkan_Init(&initInfo);
+  ImGui_ImplVulkan_CreateFontsTexture();
+
+  _deletionQueue.push_back([&]() {
+    ImGui_ImplVulkan_Shutdown();
+    vkDestroyDescriptorPool(_device->device(), _imguiPool, nullptr);
+  });
+}
 
 void Renderer::cleanup() {
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
@@ -379,9 +430,34 @@ void Renderer::draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline
   // execute a copy from the draw image onto the swapchain
   utils::copyImageToImage(commandBuffer, _drawImage.image, _images[imageIndex], _drawExtent, _extent);
 
-  // set swapchain to present optimal
+  // set swapchain to color attachment optimal
   utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  // draw imgui
+  drawImgui(commandBuffer, _imageViews[imageIndex]);
+
+  // set swapchain to present
+  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
+void Renderer::drawImgui(VkCommandBuffer commandBuffer, VkImageView target) {
+  VkRenderingAttachmentInfo colorAttachment = init::attachmentInfo(target, nullptr);
+  VkRenderingInfo renderInfo = {};
+  renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  renderInfo.renderArea.extent = _extent;
+  renderInfo.renderArea.offset = {0, 0};
+  renderInfo.colorAttachmentCount = 1;
+  renderInfo.pColorAttachments = &colorAttachment;
+  renderInfo.layerCount = 1;
+  renderInfo.viewMask = 0;
+
+  vkCmdBeginRendering(commandBuffer, &renderInfo);
+
+  ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+  vkCmdEndRendering(commandBuffer);
 }
 
 void Renderer::setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor) {

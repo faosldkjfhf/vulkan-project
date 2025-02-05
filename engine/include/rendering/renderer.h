@@ -33,6 +33,7 @@ public:
   void endRenderPass(VkCommandBuffer commandBuffer);
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline> computePipeline, uint32_t imageIndex);
+  void drawImgui(VkCommandBuffer commandBuffer, VkImageView target);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
   void present(uint32_t imageIndex);
@@ -93,6 +94,11 @@ private:
   VkDescriptorSetLayout _drawImageDescriptorLayout;
   AllocatedImage _drawImage;
   VkExtent2D _drawExtent;
+
+  VkFence _immFence;
+  VkCommandBuffer _immCommandBuffer;
+  VkCommandPool _immCommandPool;
+  VkDescriptorPool _imguiPool;
 
   FrameData _frames[FRAME_OVERLAP];
   uint32_t _currentFrame = 0;
