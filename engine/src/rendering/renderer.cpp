@@ -1,7 +1,6 @@
 #include "core/compute_pipeline.h"
 #include "core/descriptors.h"
 #include "core/device.h"
-#include "core/pipeline.h"
 #include "core/window.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -316,6 +315,12 @@ void Renderer::initializeCommands() {
     VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, &_frames[i].mainCommandBuffer));
   }
 
+  VK_CHECK(vkCreateCommandPool(_device->device(), &commandPoolInfo, nullptr, &_immCommandPool));
+  VkCommandBufferAllocateInfo cmdAllocInfo = init::commandBufferAllocateInfo(_immCommandPool);
+  VK_CHECK(vkAllocateCommandBuffers(_device->device(), &cmdAllocInfo, &_immCommandBuffer));
+
+  _deletionQueue.push_back([=, this]() { vkDestroyCommandPool(_device->device(), _immCommandPool, nullptr); });
+
   for (auto &frame : _frames) {
     frame.deletionQueue.push_back([&]() { vkDestroyCommandPool(_device->device(), frame.commandPool, nullptr); });
   }
@@ -330,6 +335,9 @@ void Renderer::initializeSyncStructures() {
     VK_CHECK(vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_frames[i].swapchainSemaphore));
     VK_CHECK(vkCreateFence(_device->device(), &fenceInfo, nullptr, &_frames[i].renderFence));
   }
+
+  vkCreateFence(_device->device(), &fenceInfo, nullptr, &_immFence);
+  _deletionQueue.push_back([&]() { vkDestroyFence(_device->device(), _immFence, nullptr); });
 
   for (auto &frame : _frames) {
     frame.deletionQueue.push_back([&]() { vkDestroySemaphore(_device->device(), frame.renderSemaphore, nullptr); });
@@ -392,6 +400,25 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   VK_CHECK(vkQueueSubmit2(_device->queue(), 1, &submitInfo, getCurrentFrame().renderFence));
 }
 
+void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function) {
+  VK_CHECK(vkResetFences(_device->device(), 1, &_immFence));
+  VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
+
+  VkCommandBuffer cmd = _immCommandBuffer;
+
+  VkCommandBufferBeginInfo cmdBeginInfo = init::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+  function(cmd);
+
+  VK_CHECK(vkEndCommandBuffer(cmd));
+
+  VkCommandBufferSubmitInfo cmdInfo = init::commandBufferSubmitInfo(cmd);
+  VkSubmitInfo2 submitInfo = init::submitInfo(&cmdInfo, nullptr, nullptr);
+  VK_CHECK(vkQueueSubmit2(_device->queue(), 1, &submitInfo, _immFence));
+  VK_CHECK(vkWaitForFences(_device->device(), 1, &_immFence, true, UINT64_MAX));
+}
+
 void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   // transition our swapchain image to a general layout
   utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
@@ -403,7 +430,7 @@ void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   vkCmdClearColorImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 }
 
-void Renderer::draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline> computePipeline,
+void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipeline graphicsPipeline,
                     uint32_t imageIndex) {
   _drawExtent.width = _drawImage.extent.width;
   _drawExtent.height = _drawImage.extent.height;
@@ -419,12 +446,22 @@ void Renderer::draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline
   VkImageSubresourceRange clearRange = init::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
 
   // bind the compute pipeline for drawing
-  computePipeline->bind(commandBuffer);
-  computePipeline->executeDispatch(commandBuffer, std::ceil(_extent.width / 16), std::ceil(_extent.height / 16), 1);
+  // computePipeline->bind(commandBuffer);
+  // computePipeline->executeDispatch(commandBuffer, std::ceil(_extent.width / 16), std::ceil(_extent.height / 16), 1);
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, effect.pipeline);
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, effect.layout, 0, 1, &_drawImageDescriptors, 0,
+                          nullptr);
+  vkCmdPushConstants(commandBuffer, effect.layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(effect.data), &effect.data);
+  vkCmdDispatch(commandBuffer, std::ceil(_extent.width / 16), std::ceil(_extent.height / 16), 1);
 
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
+                         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+  drawGeometry(commandBuffer, graphicsPipeline);
+
+  utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_GENERAL,
+  utils::transitionImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_UNDEFINED,
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
   // execute a copy from the draw image onto the swapchain
@@ -442,16 +479,38 @@ void Renderer::draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline
                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
+void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipeline pipeline) {
+  VkRenderingAttachmentInfo colorAttachment = init::attachmentInfo(_drawImage.imageView, nullptr);
+  VkRenderingInfo renderInfo = init::renderingInfo(_drawExtent, &colorAttachment, nullptr);
+  vkCmdBeginRendering(commandBuffer, &renderInfo);
+
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+  VkViewport viewport = {};
+  viewport.x = 0;
+  viewport.y = 0;
+  viewport.width = _drawExtent.width;
+  viewport.height = _drawExtent.height;
+  viewport.minDepth = 0.0f;
+  viewport.maxDepth = 1.0f;
+
+  VkRect2D scissor = {};
+  scissor.offset.x = 0;
+  scissor.offset.y = 0;
+  scissor.extent.width = _drawExtent.width;
+  scissor.extent.height = _drawExtent.height;
+
+  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+  vkCmdEndRendering(commandBuffer);
+}
+
 void Renderer::drawImgui(VkCommandBuffer commandBuffer, VkImageView target) {
   VkRenderingAttachmentInfo colorAttachment = init::attachmentInfo(target, nullptr);
-  VkRenderingInfo renderInfo = {};
-  renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
-  renderInfo.renderArea.extent = _extent;
-  renderInfo.renderArea.offset = {0, 0};
-  renderInfo.colorAttachmentCount = 1;
-  renderInfo.pColorAttachments = &colorAttachment;
-  renderInfo.layerCount = 1;
-  renderInfo.viewMask = 0;
+  VkRenderingInfo renderInfo = init::renderingInfo(_extent, &colorAttachment, nullptr);
 
   vkCmdBeginRendering(commandBuffer, &renderInfo);
 

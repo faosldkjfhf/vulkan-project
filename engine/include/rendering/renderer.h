@@ -5,7 +5,6 @@
 #include "core/descriptors.h"
 #include "core/device.h"
 #include "core/model.h"
-#include "core/pipeline.h"
 #include "core/window.h"
 #include "pch.h"
 
@@ -31,8 +30,11 @@ public:
 
   VkCommandBuffer beginRenderPass();
   void endRenderPass(VkCommandBuffer commandBuffer);
+  void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
+
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-  void draw(VkCommandBuffer commandBuffer, Pointer<core::ComputePipeline> computePipeline, uint32_t imageIndex);
+  void draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipeline graphicsPipeline, uint32_t imageIndex);
+  void drawGeometry(VkCommandBuffer commandBuffer, VkPipeline pipeline);
   void drawImgui(VkCommandBuffer commandBuffer, VkImageView target);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
@@ -54,6 +56,7 @@ public:
   FrameData &getCurrentFrame() { return _frames[_currentFrame]; }
   const VkDescriptorSetLayout &drawImageLayout() { return _drawImageDescriptorLayout; }
   const VkDescriptorSet &drawImageDescriptors() { return _drawImageDescriptors; }
+  const AllocatedImage &drawImage() { return _drawImage; }
 
 private:
   void initialize();

@@ -1,6 +1,8 @@
 #pragma once
 
 #include "pch.h"
+#include <slang-com-ptr.h>
+#include <slang.h>
 #include <vulkan/vulkan_core.h>
 
 namespace init {
@@ -154,6 +156,69 @@ static VkImageViewCreateInfo imageViewCreateInfo(VkFormat format, VkImage image,
   info.subresourceRange.aspectMask = flags;
 
   return info;
+}
+
+static VkRenderingInfo renderingInfo(VkExtent2D extent, VkRenderingAttachmentInfo *colorAttachment,
+                                     VkRenderingAttachmentInfo *depthAttachment) {
+  VkRenderingInfo renderInfo = {};
+  renderInfo.sType = VK_STRUCTURE_TYPE_RENDERING_INFO;
+  renderInfo.pNext = nullptr;
+
+  renderInfo.renderArea = VkRect2D{VkOffset2D{0, 0}, extent};
+  renderInfo.layerCount = 1;
+  renderInfo.colorAttachmentCount = 1;
+  renderInfo.pColorAttachments = colorAttachment;
+  renderInfo.pDepthAttachment = depthAttachment;
+  renderInfo.pStencilAttachment = nullptr;
+
+  return renderInfo;
+}
+
+static VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo(VkShaderStageFlagBits stage, VkShaderModule module,
+                                                                     const char *entry = "main") {
+  VkPipelineShaderStageCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  info.stage = stage;
+  info.module = module;
+  info.pName = entry;
+
+  return info;
+}
+
+static VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo() {
+  VkPipelineLayoutCreateInfo info = {};
+  info.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  info.flags = 0;
+  info.setLayoutCount = 0;
+  info.pSetLayouts = nullptr;
+  info.pushConstantRangeCount = 0;
+  info.pPushConstantRanges = nullptr;
+
+  return info;
+}
+
+static Slang::ComPtr<slang::ISession> createSession(Slang::ComPtr<slang::IGlobalSession> globalSession) {
+  slang::SessionDesc sessionDesc = {};
+  slang::TargetDesc targetDesc = {};
+  targetDesc.format = SLANG_SPIRV;
+  targetDesc.profile = globalSession->findProfile("spirv_1_5");
+  targetDesc.flags = 0;
+
+  sessionDesc.targets = &targetDesc;
+  sessionDesc.targetCount = 1;
+
+  std::vector<slang::CompilerOptionEntry> options;
+  options.push_back(
+      {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}});
+  sessionDesc.compilerOptionEntries = options.data();
+  sessionDesc.compilerOptionEntryCount = options.size();
+
+  Slang::ComPtr<slang::ISession> session;
+  if (!SLANG_SUCCEEDED(globalSession->createSession(sessionDesc, session.writeRef()))) {
+    throw std::runtime_error("failed to create slang session");
+  }
+
+  return session;
 }
 
 }; // namespace init

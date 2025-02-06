@@ -33,10 +33,13 @@ add_library(engine
   src/vma.cpp src/stb_image.cpp src/tinyobjloader.cc
   src/core/window.cpp src/core/device.cpp
   src/rendering/renderer.cpp src/core/model.cpp
-  src/core/pipeline.cpp src/core/texture.cpp
+  src/core/texture.cpp
   src/core/descriptors.cpp
   src/core/compute_pipeline.cpp
   src/rendering/render_graph.cpp
+  src/core/pipeline_builder.cpp
+  src/gpu/gpu_buffer.cpp
+  src/gpu/gpu_mesh_buffers.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
   libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp
   libs/imgui/backends/imgui_impl_vulkan.cpp libs/imgui/backends/imgui_impl_glfw.cpp)

@@ -1,18 +1,19 @@
 #include "engine.h"
 
 #include "core/compute_pipeline.h"
+#include "core/pipeline_builder.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
 #include "rendering/renderer.h"
+#include "utils/init.h"
 #include "utils/utils.h"
+#include <slang-com-ptr.h>
+#include <vulkan/vulkan_core.h>
 
 namespace bisky {
 
-Engine::Engine() {
-  initialize();
-  initializeImgui();
-}
+Engine::Engine() { initialize(); }
 
 Engine::~Engine() { cleanup(); }
 
@@ -20,33 +21,186 @@ void Engine::initialize() {
   _window = std::make_shared<core::Window>(800, 800, "Bisky Engine", this);
   _device = std::make_shared<core::Device>(_window);
   _renderer = std::make_shared<rendering::Renderer>(_window, _device);
-  _computePipeline = std::make_shared<core::ComputePipeline>(_window, _device, _renderer);
+  // _computePipeline = std::make_shared<core::ComputePipeline>(_window, _device, _renderer);
+
+  ComputeEffect gradient = {};
+  ComputeEffect sky = {};
+
+  VkPushConstantRange pushConstant = {};
+  pushConstant.offset = 0;
+  pushConstant.size = sizeof(ComputePushConstants);
+  pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
+  VkPipelineLayoutCreateInfo computeLayout = {};
+  computeLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+  computeLayout.setLayoutCount = 1;
+  computeLayout.pSetLayouts = &_renderer->drawImageLayout();
+  computeLayout.pushConstantRangeCount = 1;
+  computeLayout.pPushConstantRanges = &pushConstant;
+
+  VK_CHECK(vkCreatePipelineLayout(_device->device(), &computeLayout, nullptr, &gradient.layout));
+  VK_CHECK(vkCreatePipelineLayout(_device->device(), &computeLayout, nullptr, &sky.layout));
+
+  initializeSlang();
+  slang::IModule *gradientModule = utils::createSlangModule(_session, "../resources/shaders/compute/shader.slang");
+
+  // initialize the compute effects
+  VkShaderModule gradientShader;
+  if (!utils::loadShaderModule(_session, gradientModule, _device->device(), "computeMain", &gradientShader)) {
+    fmt::println("failed to create shader module");
+  }
+
+  VkShaderModule skyShader;
+  if (!utils::loadShaderModule(_session, gradientModule, _device->device(), "computeMain", &skyShader)) {
+    fmt::println("failed to create shader module");
+  }
+
+  VkPipelineShaderStageCreateInfo stageInfo = {};
+  stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stageInfo.module = gradientShader;
+  stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+  stageInfo.pName = "main";
+
+  VkComputePipelineCreateInfo computePipelineCreateInfo = {};
+  computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  computePipelineCreateInfo.layout = gradient.layout;
+  computePipelineCreateInfo.stage = stageInfo;
+
+  gradient.name = "gradient";
+  gradient.data = {};
+  gradient.data.data1 = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+  gradient.data.data2 = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+  VK_CHECK(vkCreateComputePipelines(_device->device(), VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr,
+                                    &gradient.pipeline));
+
+  computePipelineCreateInfo.stage.module = skyShader;
+  sky.name = "sky";
+  sky.data = {};
+  sky.data.data1 = glm::vec4(0.1f, 0.2f, 0.4f, 0.97f);
+  sky.data.data2 = glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+  VK_CHECK(vkCreateComputePipelines(_device->device(), VK_NULL_HANDLE, 1, &computePipelineCreateInfo, nullptr,
+                                    &sky.pipeline));
+
+  _backgroundEffects.push_back(gradient);
+  _backgroundEffects.push_back(sky);
+
+  vkDestroyShaderModule(_device->device(), skyShader, nullptr);
+  vkDestroyShaderModule(_device->device(), gradientShader, nullptr);
+
+  // initialize triangle pipeline
+  Slang::ComPtr<slang::ISession> newSession = init::createSession(_globalSession);
+  slang::IModule *triangleModule =
+      utils::createSlangModule(newSession, "../resources/shaders/render/colored_triangle.slang");
+
+  VkShaderModule triangleVertShader;
+  VkShaderModule triangleFragShader;
+  utils::loadShaderModule(newSession, triangleModule, _device->device(), "vertMain", &triangleVertShader);
+  utils::loadShaderModule(newSession, triangleModule, _device->device(), "fragMain", &triangleFragShader);
+
+  VkPipelineLayoutCreateInfo layoutInfo = init::pipelineLayoutCreateInfo();
+  VK_CHECK(vkCreatePipelineLayout(_device->device(), &layoutInfo, nullptr, &_trianglePipelineLayout));
+
+  core::PipelineBuilder builder;
+  builder.layout = _trianglePipelineLayout;
+  builder.setShaders(triangleVertShader, triangleFragShader);
+  builder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  builder.setPolygonMode(VK_POLYGON_MODE_FILL);
+  builder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+  builder.setMultisamplingNone();
+  builder.disableBlending();
+  builder.disableDepthTest();
+  builder.setColorAttachmentFormat(_renderer->drawImage().format);
+  builder.setDepthFormat(VK_FORMAT_UNDEFINED);
+
+  _trianglePipeline = builder.build(_device->device());
+
+  vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
+  vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
 }
 
-void Engine::initializeImgui() {}
+void Engine::initializeSlang() {
+  slang::createGlobalSession(_globalSession.writeRef());
 
-void Engine::createDefaultScene() {
-  core::Model::Builder builder;
-  builder.vertices = {
-      {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-      {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-      {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-      {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-  };
-  builder.indices = {0, 1, 2, 2, 3, 0};
+  slang::SessionDesc sessionDesc = {};
+  slang::TargetDesc targetDesc = {};
+  targetDesc.format = SLANG_SPIRV;
+  targetDesc.profile = _globalSession->findProfile("spirv_1_5");
+  targetDesc.flags = 0;
 
-  _models.emplace_back(std::make_shared<core::Model>(_device, builder));
+  sessionDesc.targets = &targetDesc;
+  sessionDesc.targetCount = 1;
+
+  std::vector<slang::CompilerOptionEntry> options;
+  options.push_back(
+      {slang::CompilerOptionName::EmitSpirvDirectly, {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}});
+  sessionDesc.compilerOptionEntries = options.data();
+  sessionDesc.compilerOptionEntryCount = options.size();
+
+  if (!SLANG_SUCCEEDED(_globalSession->createSession(sessionDesc, _session.writeRef()))) {
+    throw std::runtime_error("failed to create slang session");
+  }
 }
 
 void Engine::cleanup() {
-  for (auto model : _models) {
-    model->cleanup();
+  vkDestroyPipelineLayout(_device->device(), _trianglePipelineLayout, nullptr);
+  vkDestroyPipeline(_device->device(), _trianglePipeline, nullptr);
+
+  for (auto &effect : _backgroundEffects) {
+    vkDestroyPipelineLayout(_device->device(), effect.layout, nullptr);
+    vkDestroyPipeline(_device->device(), effect.pipeline, nullptr);
   }
 
-  _computePipeline->cleanup();
+  // _computePipeline->cleanup();
   _renderer->cleanup();
   _device->cleanup();
   _window->cleanup();
+}
+
+GPUMeshBuffers Engine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices) {
+  const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+  const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+  GPUMeshBuffers buffers;
+
+  GPUBuffer::Builder builder = {};
+  builder.allocator = _device->allocator();
+
+  buffers.vertexBuffer = builder.build(vertexBufferSize,
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                       VMA_MEMORY_USAGE_GPU_ONLY);
+
+  VkBufferDeviceAddressInfo deviceAddressInfo = {};
+  deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+  deviceAddressInfo.buffer = buffers.vertexBuffer.buffer;
+  buffers.vertexBufferAddress = vkGetBufferDeviceAddress(_device->device(), &deviceAddressInfo);
+
+  buffers.indexBuffer = builder.build(
+      indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+
+  GPUBuffer staging =
+      builder.build(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+  void *data = staging.info.pMappedData;
+  memcpy(data, vertices.data(), vertexBufferSize);
+  memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
+
+  _renderer->immediateSubmit([&](VkCommandBuffer cmd) {
+    VkBufferCopy vertexCopy = {};
+    vertexCopy.size = vertexBufferSize;
+    vertexCopy.srcOffset = 0;
+    vertexCopy.dstOffset = 0;
+    vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
+
+    VkBufferCopy indexCopy = {};
+    indexCopy.size = indexBufferSize;
+    indexCopy.srcOffset = vertexBufferSize;
+    indexCopy.dstOffset = 0;
+    vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
+  });
+
+  staging.cleanup(_device->allocator());
+
+  return buffers;
 }
 
 void Engine::run() {
@@ -67,13 +221,22 @@ void Engine::render() {
   // imgui new frame
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
+
   ImGui::NewFrame();
 
   ImGui::Begin("Debug");
-  ImGui::Text("hello");
+
+  ComputeEffect &selected = _backgroundEffects[_currentBackgroundEffect];
+
+  ImGui::Text("Selected Effect: %s", selected.name);
+  ImGui::SliderInt("Effect Index", &_currentBackgroundEffect, 0, 1);
+  ImGui::InputFloat4("data1", (float *)&selected.data.data1);
+  ImGui::InputFloat4("data2", (float *)&selected.data.data2);
+  ImGui::InputFloat4("data3", (float *)&selected.data.data3);
+  ImGui::InputFloat4("data4", (float *)&selected.data.data4);
+
   ImGui::End();
 
-  // make imgui calculate internal draw structures
   ImGui::Render();
 
   // reset fences and wait for next fence
@@ -91,7 +254,7 @@ void Engine::render() {
   VkCommandBuffer commandBuffer = _renderer->beginRenderPass();
 
   // draw the image to the swapchain
-  _renderer->draw(commandBuffer, _computePipeline, imageIndex);
+  _renderer->draw(commandBuffer, _backgroundEffects[_currentBackgroundEffect], _trianglePipeline, imageIndex);
 
   // end command buffer and render pass
   _renderer->endRenderPass(commandBuffer);

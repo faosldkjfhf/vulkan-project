@@ -2,11 +2,12 @@
 
 #include "core/compute_pipeline.h"
 #include "core/device.h"
-#include "core/pipeline.h"
 #include "core/window.h"
+#include "gpu/gpu_mesh_buffers.h"
 #include "icallbacks.h"
 #include "pch.h"
 #include "rendering/renderer.h"
+#include <slang-com-ptr.h>
 
 namespace bisky {
 
@@ -22,11 +23,11 @@ private:
   void update();
   void render();
 
-  void createDefaultScene();
-
   void initialize();
-  void initializeImgui();
+  void initializeSlang();
   void cleanup();
+
+  GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
   virtual void onKey(int key, int scancode, int action, int mods) override;
   virtual void onResize(int width, int height) override;
@@ -36,14 +37,20 @@ private:
   Pointer<core::Window> _window;
   Pointer<core::Device> _device;
   Pointer<rendering::Renderer> _renderer;
-  Pointer<core::ComputePipeline> _computePipeline;
-  Pointer<core::Pipeline> _pipeline;
 
-  VkDescriptorPool _imguiPool;
+  Vector<ComputeEffect> _backgroundEffects;
+  int _currentBackgroundEffect = 0;
 
-  Vector<Pointer<core::Model>> _models;
-  AllocatedImage _drawImage;
-  VkExtent2D _drawExtent;
+  VkPipelineLayout _trianglePipelineLayout;
+  VkPipeline _trianglePipeline;
+
+  VkPipelineLayout _meshPipelineLayout;
+  VkPipeline _meshPipeline;
+
+  GPUMeshBuffers _meshBuffers;
+
+  Slang::ComPtr<slang::IGlobalSession> _globalSession;
+  Slang::ComPtr<slang::ISession> _session;
 };
 
 } // namespace bisky

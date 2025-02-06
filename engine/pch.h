@@ -21,6 +21,7 @@
 #include <glm/gtx/hash.hpp>
 
 #include <fmt/core.h>
+#include <shaderc/shaderc.hpp>
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
 
@@ -36,9 +37,9 @@
   } while (0)
 
 namespace bisky {
+
 template <typename T> using Vector = std::vector<T>;
 template <typename T> using Pointer = std::shared_ptr<T>;
-} // namespace bisky
 
 struct QueueFamilyIndices {
   std::optional<uint32_t> queueFamily;
@@ -54,6 +55,32 @@ struct FrameData {
   VkFence renderFence;
 
   bisky::core::DeletionQueue deletionQueue;
+};
+
+struct Vertex {
+  alignas(16) glm::vec3 position;
+  alignas(16) glm::vec2 uv;
+  alignas(16) glm::vec3 normal;
+  alignas(16) glm::vec4 color;
+};
+
+struct GPUPushConstants {
+  glm::mat4 worldMatrix;
+  VkDeviceAddress vertexBuffer;
+};
+
+struct ComputePushConstants {
+  glm::vec4 data1;
+  glm::vec4 data2;
+  glm::vec4 data3;
+  glm::vec4 data4;
+};
+
+struct ComputeEffect {
+  const char *name;
+  VkPipeline pipeline;
+  VkPipelineLayout layout;
+  ComputePushConstants data;
 };
 
 struct AllocatedImage {
@@ -72,45 +99,45 @@ struct SwapchainSupportDetails {
   std::vector<VkPresentModeKHR> presentModes;
 };
 
-struct Vertex {
-  glm::vec3 position;
-  glm::vec3 color;
-  glm::vec2 uv;
-
-  bool operator==(const Vertex &other) const {
-    return position == other.position && color == other.color && uv == other.uv;
-  }
-
-  static VkVertexInputBindingDescription getBindingDescription() {
-    VkVertexInputBindingDescription bindingDescription{};
-    bindingDescription.binding = 0;
-    bindingDescription.stride = sizeof(Vertex);
-    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-    return bindingDescription;
-  }
-
-  static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-    std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
-
-    attributeDescriptions[0].binding = 0;
-    attributeDescriptions[0].location = 0;
-    attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[0].offset = offsetof(Vertex, position);
-
-    attributeDescriptions[1].binding = 0;
-    attributeDescriptions[1].location = 1;
-    attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attributeDescriptions[1].offset = offsetof(Vertex, color);
-
-    attributeDescriptions[2].binding = 0;
-    attributeDescriptions[2].location = 2;
-    attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-    attributeDescriptions[2].offset = offsetof(Vertex, uv);
-
-    return attributeDescriptions;
-  }
-};
+// struct Vertex {
+//   glm::vec3 position;
+//   glm::vec3 color;
+//   glm::vec2 uv;
+//
+//   bool operator==(const Vertex &other) const {
+//     return position == other.position && color == other.color && uv == other.uv;
+//   }
+//
+//   static VkVertexInputBindingDescription getBindingDescription() {
+//     VkVertexInputBindingDescription bindingDescription{};
+//     bindingDescription.binding = 0;
+//     bindingDescription.stride = sizeof(Vertex);
+//     bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+//
+//     return bindingDescription;
+//   }
+//
+//   static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
+//     std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions = {};
+//
+//     attributeDescriptions[0].binding = 0;
+//     attributeDescriptions[0].location = 0;
+//     attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+//     attributeDescriptions[0].offset = offsetof(Vertex, position);
+//
+//     attributeDescriptions[1].binding = 0;
+//     attributeDescriptions[1].location = 1;
+//     attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+//     attributeDescriptions[1].offset = offsetof(Vertex, color);
+//
+//     attributeDescriptions[2].binding = 0;
+//     attributeDescriptions[2].location = 2;
+//     attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
+//     attributeDescriptions[2].offset = offsetof(Vertex, uv);
+//
+//     return attributeDescriptions;
+//   }
+// };
 
 struct UniformBufferObject {
   glm::mat4 model;
@@ -123,10 +150,12 @@ struct PushConstants {
   alignas(16) glm::vec3 color;
 };
 
+} // namespace bisky
+
 namespace std {
 
-template <> struct hash<Vertex> {
-  size_t operator()(Vertex const &vertex) const {
+template <> struct hash<bisky::Vertex> {
+  size_t operator()(bisky::Vertex const &vertex) const {
     return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
            (hash<glm::vec2>()(vertex.uv) << 1);
   }

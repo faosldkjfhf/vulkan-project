@@ -253,5 +253,17 @@ static bool loadShaderModule(Slang::ComPtr<slang::ISession> session, slang::IMod
   return true;
 }
 
+inline slang::IModule *createSlangModule(Slang::ComPtr<slang::ISession> session, const char *file) {
+  slang::IModule *module;
+  Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+  module = session->loadModule(file, diagnosticsBlob.writeRef());
+
+  if (diagnosticsBlob) {
+    fprintf(stdout, "%s\n", (const char *)diagnosticsBlob->getBufferPointer());
+  }
+
+  return module;
+}
+
 } // namespace utils
 } // namespace bisky

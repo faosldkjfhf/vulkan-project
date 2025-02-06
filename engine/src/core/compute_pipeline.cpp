@@ -22,6 +22,12 @@ void ComputePipeline::bind(VkCommandBuffer cmd) {
   vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
   vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _pipelineLayout, 0, 1,
                           &_renderer->drawImageDescriptors(), 0, nullptr);
+
+  ComputePushConstants pc;
+  pc.data1 = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+  pc.data2 = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);
+
+  vkCmdPushConstants(cmd, _pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(pc), &pc);
 }
 
 void ComputePipeline::executeDispatch(VkCommandBuffer cmd, uint32_t x, uint32_t y, uint32_t z) {
@@ -31,10 +37,17 @@ void ComputePipeline::executeDispatch(VkCommandBuffer cmd, uint32_t x, uint32_t 
 void ComputePipeline::initPipelines() { initBackgroundPipelines(); }
 
 void ComputePipeline::initBackgroundPipelines() {
+  VkPushConstantRange pushConstant = {};
+  pushConstant.offset = 0;
+  pushConstant.size = sizeof(ComputePushConstants);
+  pushConstant.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
   VkPipelineLayoutCreateInfo computeLayout = {};
   computeLayout.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
   computeLayout.setLayoutCount = 1;
   computeLayout.pSetLayouts = &_renderer->drawImageLayout();
+  computeLayout.pushConstantRangeCount = 1;
+  computeLayout.pPushConstantRanges = &pushConstant;
 
   VK_CHECK(vkCreatePipelineLayout(_device->device(), &computeLayout, nullptr, &_pipelineLayout));
   _deletionQueue.push_back([&]() { vkDestroyPipelineLayout(_device->device(), _pipelineLayout, nullptr); });
