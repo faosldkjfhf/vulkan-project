@@ -116,6 +116,17 @@ void Engine::initialize() {
 
   vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
   vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
+
+  VkPushConstantRange bufferRange = {};
+  bufferRange.offset = 0;
+  bufferRange.size = sizeof(GPUPushConstants);
+  bufferRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+  VkPipelineLayoutCreateInfo pipelineLayoutInfo = init::pipelineLayoutCreateInfo();
+  pipelineLayoutInfo.pushConstantRangeCount = 1;
+  pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
+
+  VK_CHECK(vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_meshPipelineLayout));
 }
 
 void Engine::initializeSlang() {

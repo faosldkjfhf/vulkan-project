@@ -5,14 +5,11 @@ struct Vertex {
   float4 color;
 };
 
-struct PushConstants {
+[vk::push_constant]
+cbuffer Constants {
   float4x4 renderMatrix;
+  ConstBufferPointer<Vertex> vertices;
 };
-
-StructuredBuffer<Vertex, Std430DataLayout> vertices;
-
-[vk::push_constant()]
-ConstantBuffer<PushConstants> pushConstants;
 
 struct VertexOutput {
   float4 position : SV_Position;
@@ -26,7 +23,7 @@ VertexOutput vertMain(int vertexIndex: SV_VertexID) {
 
   VertexOutput output;
 
-  output.position = mul(transpose(pushConstants.renderMatrix), float4(v.position, 1.0));
+  output.position = mul(transpose(renderMatrix), float4(v.position, 1.0));
   output.color = v.color;
   output.uv = v.uv;
 
