@@ -2,6 +2,7 @@
 #include "core/descriptors.h"
 #include "core/device.h"
 #include "core/window.h"
+#include "gpu/gpu_mesh_buffers.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
@@ -430,8 +431,8 @@ void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
   vkCmdClearColorImage(commandBuffer, _images[imageIndex], VK_IMAGE_LAYOUT_GENERAL, &clearValue, 1, &clearRange);
 }
 
-void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipeline graphicsPipeline,
-                    uint32_t imageIndex) {
+void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout,
+                    VkPipeline graphicsPipeline, GPUMeshBuffers mesh, uint32_t imageIndex) {
   _drawExtent.width = _drawImage.extent.width;
   _drawExtent.height = _drawImage.extent.height;
 
@@ -457,7 +458,7 @@ void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipe
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-  drawGeometry(commandBuffer, graphicsPipeline);
+  drawGeometry(commandBuffer, layout, graphicsPipeline, mesh);
 
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -479,7 +480,8 @@ void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipe
                          VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
-void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipeline pipeline) {
+void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkPipeline pipeline,
+                            GPUMeshBuffers mesh) {
   VkRenderingAttachmentInfo colorAttachment = init::attachmentInfo(_drawImage.imageView, nullptr);
   VkRenderingInfo renderInfo = init::renderingInfo(_drawExtent, &colorAttachment, nullptr);
   vkCmdBeginRendering(commandBuffer, &renderInfo);
@@ -503,7 +505,15 @@ void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipeline pipeline) 
   vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
   vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+  // vkCmdDraw(commandBuffer, 3, 1, 0, 0);
+
+  GPUPushConstants pushConstants = {};
+  pushConstants.worldMatrix = glm::mat4(1.0f);
+  pushConstants.vertexBuffer = mesh.vertexBufferAddress;
+
+  vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConstants), &pushConstants);
+  vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
 }

@@ -90,32 +90,29 @@ void Engine::initialize() {
   // initialize triangle pipeline
   Slang::ComPtr<slang::ISession> newSession = init::createSession(_globalSession);
   slang::IModule *triangleModule =
-      utils::createSlangModule(newSession, "../resources/shaders/render/colored_triangle.slang");
+      utils::createSlangModule(newSession, "../resources/shaders/render/colored_triangle_mesh.slang");
 
   VkShaderModule triangleVertShader;
   VkShaderModule triangleFragShader;
   utils::loadShaderModule(newSession, triangleModule, _device->device(), "vertMain", &triangleVertShader);
   utils::loadShaderModule(newSession, triangleModule, _device->device(), "fragMain", &triangleFragShader);
 
-  VkPipelineLayoutCreateInfo layoutInfo = init::pipelineLayoutCreateInfo();
-  VK_CHECK(vkCreatePipelineLayout(_device->device(), &layoutInfo, nullptr, &_trianglePipelineLayout));
-
+  // VkPipelineLayoutCreateInfo layoutInfo = init::pipelineLayoutCreateInfo();
+  // VK_CHECK(vkCreatePipelineLayout(_device->device(), &layoutInfo, nullptr, &_trianglePipelineLayout));
+  //
   core::PipelineBuilder builder;
-  builder.layout = _trianglePipelineLayout;
-  builder.setShaders(triangleVertShader, triangleFragShader);
-  builder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
-  builder.setPolygonMode(VK_POLYGON_MODE_FILL);
-  builder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
-  builder.setMultisamplingNone();
-  builder.disableBlending();
-  builder.disableDepthTest();
-  builder.setColorAttachmentFormat(_renderer->drawImage().format);
-  builder.setDepthFormat(VK_FORMAT_UNDEFINED);
-
-  _trianglePipeline = builder.build(_device->device());
-
-  vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
-  vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
+  // builder.layout = _trianglePipelineLayout;
+  // builder.setShaders(triangleVertShader, triangleFragShader);
+  // builder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  // builder.setPolygonMode(VK_POLYGON_MODE_FILL);
+  // builder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+  // builder.setMultisamplingNone();
+  // builder.disableBlending();
+  // builder.disableDepthTest();
+  // builder.setColorAttachmentFormat(_renderer->drawImage().format);
+  // builder.setDepthFormat(VK_FORMAT_UNDEFINED);
+  //
+  // _trianglePipeline = builder.build(_device->device());
 
   VkPushConstantRange bufferRange = {};
   bufferRange.offset = 0;
@@ -127,6 +124,46 @@ void Engine::initialize() {
   pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
 
   VK_CHECK(vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_meshPipelineLayout));
+
+  builder.clear();
+  builder.layout = _meshPipelineLayout;
+  builder.setShaders(triangleVertShader, triangleFragShader);
+  builder.setInputTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+  builder.setPolygonMode(VK_POLYGON_MODE_FILL);
+  builder.setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE);
+  builder.setMultisamplingNone();
+  builder.disableBlending();
+  builder.disableDepthTest();
+  builder.setColorAttachmentFormat(_renderer->drawImage().format);
+  builder.setDepthFormat(VK_FORMAT_UNDEFINED);
+  _meshPipeline = builder.build(_device->device());
+
+  vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
+  vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
+
+  std::array<Vertex, 4> rect_vertices;
+
+  rect_vertices[0].position = {0.5, -0.5, 0};
+  rect_vertices[1].position = {0.5, 0.5, 0};
+  rect_vertices[2].position = {-0.5, -0.5, 0};
+  rect_vertices[3].position = {-0.5, 0.5, 0};
+
+  rect_vertices[0].color = {0, 0, 0, 1};
+  rect_vertices[1].color = {0.5, 0.5, 0.5, 1};
+  rect_vertices[2].color = {1, 0, 0, 1};
+  rect_vertices[3].color = {0, 1, 0, 1};
+
+  std::array<uint32_t, 6> rect_indices;
+
+  rect_indices[0] = 0;
+  rect_indices[1] = 1;
+  rect_indices[2] = 2;
+
+  rect_indices[3] = 2;
+  rect_indices[4] = 1;
+  rect_indices[5] = 3;
+
+  _meshBuffers = uploadMesh(rect_indices, rect_vertices);
 }
 
 void Engine::initializeSlang() {
@@ -153,8 +190,12 @@ void Engine::initializeSlang() {
 }
 
 void Engine::cleanup() {
-  vkDestroyPipelineLayout(_device->device(), _trianglePipelineLayout, nullptr);
-  vkDestroyPipeline(_device->device(), _trianglePipeline, nullptr);
+  _meshBuffers.cleanup(_device->allocator());
+  vkDestroyPipelineLayout(_device->device(), _meshPipelineLayout, nullptr);
+  vkDestroyPipeline(_device->device(), _meshPipeline, nullptr);
+
+  // vkDestroyPipelineLayout(_device->device(), _trianglePipelineLayout, nullptr);
+  // vkDestroyPipeline(_device->device(), _trianglePipeline, nullptr);
 
   for (auto &effect : _backgroundEffects) {
     vkDestroyPipelineLayout(_device->device(), effect.layout, nullptr);
@@ -265,7 +306,8 @@ void Engine::render() {
   VkCommandBuffer commandBuffer = _renderer->beginRenderPass();
 
   // draw the image to the swapchain
-  _renderer->draw(commandBuffer, _backgroundEffects[_currentBackgroundEffect], _trianglePipeline, imageIndex);
+  _renderer->draw(commandBuffer, _backgroundEffects[_currentBackgroundEffect], _meshPipelineLayout, _meshPipeline,
+                  _meshBuffers, imageIndex);
 
   // end command buffer and render pass
   _renderer->endRenderPass(commandBuffer);

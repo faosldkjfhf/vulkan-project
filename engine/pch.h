@@ -58,10 +58,11 @@ struct FrameData {
 };
 
 struct Vertex {
-  alignas(16) glm::vec3 position;
-  alignas(16) glm::vec2 uv;
-  alignas(16) glm::vec3 normal;
-  alignas(16) glm::vec4 color;
+  glm::vec3 position;
+  float uv_x;
+  glm::vec3 normal;
+  float uv_y;
+  glm::vec4 color;
 };
 
 struct GPUPushConstants {
@@ -152,13 +153,13 @@ struct PushConstants {
 
 } // namespace bisky
 
-namespace std {
-
-template <> struct hash<bisky::Vertex> {
-  size_t operator()(bisky::Vertex const &vertex) const {
-    return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-           (hash<glm::vec2>()(vertex.uv) << 1);
-  }
-};
-
-} // namespace std
+// namespace std {
+//
+// template <> struct hash<bisky::Vertex> {
+//   size_t operator()(bisky::Vertex const &vertex) const {
+//     return ((hash<glm::vec3>()(vertex.position) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
+//            (hash<glm::vec2>()(vertex.uv) << 1);
+//   }
+// };
+//
+// } // namespace std

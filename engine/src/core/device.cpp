@@ -25,7 +25,8 @@ void Device::initialize() {
   vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
 
   VmaAllocatorCreateInfo allocatorCreateInfo = {};
-  allocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT;
+  allocatorCreateInfo.flags =
+      VMA_ALLOCATOR_CREATE_EXT_MEMORY_BUDGET_BIT | VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
   allocatorCreateInfo.vulkanApiVersion = VK_API_VERSION_1_4;
   allocatorCreateInfo.physicalDevice = _physicalDevice;
   allocatorCreateInfo.device = _device;
@@ -305,6 +306,7 @@ void Device::createLogicalDevice() {
 
   VkPhysicalDeviceFeatures deviceFeatures = {};
   deviceFeatures.samplerAnisotropy = VK_TRUE;
+  deviceFeatures.shaderInt64 = VK_TRUE;
 
   VkPhysicalDeviceSynchronization2Features deviceSynchronizationFeatures = {};
   deviceSynchronizationFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES;
@@ -314,6 +316,11 @@ void Device::createLogicalDevice() {
   dynamicRenderingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
   dynamicRenderingFeatures.dynamicRendering = VK_TRUE;
   dynamicRenderingFeatures.pNext = &deviceSynchronizationFeatures;
+
+  VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddress = {};
+  bufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
+  bufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
+  bufferDeviceAddress.pNext = &dynamicRenderingFeatures;
 
   std::vector<const char *> extensions(utils::deviceExtensions);
 
@@ -331,7 +338,7 @@ void Device::createLogicalDevice() {
   createInfo.pEnabledFeatures = &deviceFeatures;
   createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
   createInfo.ppEnabledExtensionNames = extensions.data();
-  createInfo.pNext = &dynamicRenderingFeatures;
+  createInfo.pNext = &bufferDeviceAddress;
 
   VK_CHECK(vkCreateDevice(_physicalDevice, &createInfo, nullptr, &_device));
 

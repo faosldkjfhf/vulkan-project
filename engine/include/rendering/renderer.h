@@ -6,6 +6,7 @@
 #include "core/device.h"
 #include "core/model.h"
 #include "core/window.h"
+#include "gpu/gpu_mesh_buffers.h"
 #include "pch.h"
 
 namespace bisky {
@@ -33,8 +34,9 @@ public:
   void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
 
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
-  void draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipeline graphicsPipeline, uint32_t imageIndex);
-  void drawGeometry(VkCommandBuffer commandBuffer, VkPipeline pipeline);
+  void draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout, VkPipeline graphicsPipeline,
+            GPUMeshBuffers mesh, uint32_t imageIndex);
+  void drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkPipeline pipeline, GPUMeshBuffers mesh);
   void drawImgui(VkCommandBuffer commandBuffer, VkImageView target);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);

@@ -1,14 +1,15 @@
 struct Vertex {
   float3 position;
-  float2 uv;
+  float uv_x;
   float3 normal;
+  float uv_y;
   float4 color;
 };
 
 [vk::push_constant]
 cbuffer Constants {
   float4x4 renderMatrix;
-  ConstBufferPointer<Vertex> vertices;
+  Vertex *vertices;
 };
 
 struct VertexOutput {
@@ -25,7 +26,7 @@ VertexOutput vertMain(int vertexIndex: SV_VertexID) {
 
   output.position = mul(transpose(renderMatrix), float4(v.position, 1.0));
   output.color = v.color;
-  output.uv = v.uv;
+  output.uv = float2(v.uv_x, v.uv_y);
 
   return output;
 }
