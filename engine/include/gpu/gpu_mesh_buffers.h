@@ -1,7 +1,6 @@
 #pragma once
 
 #include "gpu/gpu_buffer.h"
-#include "pch.h"
 
 namespace bisky {
 

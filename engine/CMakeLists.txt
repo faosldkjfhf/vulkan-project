@@ -1,7 +1,11 @@
+cmake_minimum_required(VERSION 3.12)
+set(CMAKE_CXX_STANDARD 20)
+
 find_package(glfw3 3.4 REQUIRED)
 find_package(VulkanMemoryAllocator REQUIRED)
 find_package(glm REQUIRED)
 find_package(Vulkan REQUIRED)
+find_package(fastgltf REQUIRED)
 
 if (APPLE)
   find_package(fmt REQUIRED)
@@ -25,9 +29,6 @@ else()
   find_package(slang REQUIRED)
 endif()
 
-
-set(CMAKE_CXX_STANDARD 20)
-
 add_library(engine
   engine.cpp
   src/vma.cpp src/stb_image.cpp src/tinyobjloader.cc
@@ -37,6 +38,8 @@ add_library(engine
   src/core/descriptors.cpp
   src/core/compute_pipeline.cpp
   src/rendering/render_graph.cpp
+  src/rendering/render_pass.cpp
+  src/core/mesh_loader.cpp
   src/core/pipeline_builder.cpp
   src/gpu/gpu_buffer.cpp
   src/gpu/gpu_mesh_buffers.cpp
@@ -50,5 +53,5 @@ if (APPLE)
 endif()
 
 target_include_directories(engine PUBLIC include . ${Vulkan_INCLUDES} libs/stb libs/tinyobjloader libs/imgui libs/imgui/backends)
-target_link_libraries(engine PRIVATE fmt::fmt slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
+target_link_libraries(engine PRIVATE fastgltf fmt::fmt slang::slang glm::glm Vulkan::Vulkan GPUOpen::VulkanMemoryAllocator glfw)
 target_precompile_headers(engine PRIVATE pch.h)

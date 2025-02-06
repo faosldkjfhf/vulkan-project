@@ -20,8 +20,6 @@ public:
   VkBuffer buffer;
   VmaAllocation allocation;
   VmaAllocationInfo info;
-
-private:
 };
 
 } // namespace bisky

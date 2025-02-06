@@ -18,6 +18,8 @@ public:
 
   void run();
 
+  GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
+
 private:
   void input();
   void update();
@@ -26,8 +28,6 @@ private:
   void initialize();
   void initializeSlang();
   void cleanup();
-
-  GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
 
   virtual void onKey(int key, int scancode, int action, int mods) override;
   virtual void onResize(int width, int height) override;
@@ -48,6 +48,7 @@ private:
   VkPipeline _meshPipeline;
 
   GPUMeshBuffers _meshBuffers;
+  // Vector<Pointer<MeshAsset>> _testMeshes;
 
   Slang::ComPtr<slang::IGlobalSession> _globalSession;
   Slang::ComPtr<slang::ISession> _session;
