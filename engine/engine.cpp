@@ -164,7 +164,7 @@ void Engine::initialize() {
   rect_indices[4] = 1;
   rect_indices[5] = 3;
 
-  _meshBuffers = uploadMesh(rect_indices, rect_vertices);
+  _meshBuffers = utils::uploadMesh(_device, _renderer, rect_indices, rect_vertices);
   _testMeshes = core::MeshLoader::loadGltfMeshes(_device, _renderer, "../resources/models/basicmesh.glb").value();
 }
 
@@ -212,53 +212,6 @@ void Engine::cleanup() {
   _renderer->cleanup();
   _device->cleanup();
   _window->cleanup();
-}
-
-GPUMeshBuffers Engine::uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices) {
-  const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
-  const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
-  GPUMeshBuffers buffers;
-
-  GPUBuffer::Builder builder = {};
-  builder.allocator = _device->allocator();
-
-  buffers.vertexBuffer = builder.build(vertexBufferSize,
-                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                                       VMA_MEMORY_USAGE_GPU_ONLY);
-
-  VkBufferDeviceAddressInfo deviceAddressInfo = {};
-  deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-  deviceAddressInfo.buffer = buffers.vertexBuffer.buffer;
-  buffers.vertexBufferAddress = vkGetBufferDeviceAddress(_device->device(), &deviceAddressInfo);
-
-  buffers.indexBuffer = builder.build(
-      indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-
-  GPUBuffer staging =
-      builder.build(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
-
-  void *data = staging.info.pMappedData;
-  memcpy(data, vertices.data(), vertexBufferSize);
-  memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
-
-  _renderer->immediateSubmit([&](VkCommandBuffer cmd) {
-    VkBufferCopy vertexCopy = {};
-    vertexCopy.size = vertexBufferSize;
-    vertexCopy.srcOffset = 0;
-    vertexCopy.dstOffset = 0;
-    vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
-
-    VkBufferCopy indexCopy = {};
-    indexCopy.size = indexBufferSize;
-    indexCopy.srcOffset = vertexBufferSize;
-    indexCopy.dstOffset = 0;
-    vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
-  });
-
-  staging.cleanup(_device->allocator());
-
-  return buffers;
 }
 
 void Engine::run() {

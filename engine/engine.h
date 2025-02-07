@@ -19,8 +19,6 @@ public:
 
   void run();
 
-  GPUMeshBuffers uploadMesh(std::span<uint32_t> indices, std::span<Vertex> vertices);
-
 private:
   void input();
   void update();
