@@ -32,8 +32,9 @@ public:
   MeshLoader();
   ~MeshLoader();
 
-  static std::optional<Vector<Pointer<MeshAsset>>>
-  loadGltfMeshes(Pointer<core::Device> device, Pointer<rendering::Renderer> renderer, std::filesystem::path filePath) {
+  static std::optional<Vector<Pointer<MeshAsset>>> loadGltfMeshes(Pointer<core::Device> device,
+                                                                  Pointer<core::ImmediateSubmit> immediateSubmit,
+                                                                  std::filesystem::path filePath) {
     auto data = fastgltf::GltfDataBuffer::FromPath(filePath);
     if (data.error() != fastgltf::Error::None) {
       return {};
@@ -127,7 +128,7 @@ public:
       }
 
       // newMesh.meshBuffers = engine->uploadMesh(indices, vertices);
-      newMesh.meshBuffers = utils::uploadMesh(device, renderer, indices, vertices);
+      newMesh.meshBuffers = utils::uploadMesh(device, immediateSubmit, indices, vertices);
       meshes.emplace_back(std::make_shared<MeshAsset>(std::move(newMesh)));
     }
 

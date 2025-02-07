@@ -4,6 +4,7 @@
 #include "core/deletion_queue.h"
 #include "core/descriptors.h"
 #include "core/device.h"
+#include "core/immedate_submit.h"
 #include "core/model.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
@@ -31,8 +32,6 @@ public:
 
   VkCommandBuffer beginRenderPass();
   void endRenderPass(VkCommandBuffer commandBuffer);
-  void immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function);
-
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout, VkPipeline graphicsPipeline,
             GPUMeshBuffers mesh, uint32_t imageIndex);
@@ -59,6 +58,7 @@ public:
   const VkDescriptorSetLayout &drawImageLayout() { return _drawImageDescriptorLayout; }
   const VkDescriptorSet &drawImageDescriptors() { return _drawImageDescriptors; }
   const AllocatedImage &drawImage() { return _drawImage; }
+  Pointer<core::ImmediateSubmit> immediateSubmit() { return _immediateSubmit; }
 
 private:
   void initialize();
@@ -100,9 +100,7 @@ private:
   AllocatedImage _drawImage;
   VkExtent2D _drawExtent;
 
-  VkFence _immFence;
-  VkCommandBuffer _immCommandBuffer;
-  VkCommandPool _immCommandPool;
+  Pointer<core::ImmediateSubmit> _immediateSubmit;
   VkDescriptorPool _imguiPool;
 
   FrameData _frames[FRAME_OVERLAP];

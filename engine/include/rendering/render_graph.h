@@ -9,7 +9,7 @@ namespace rendering {
 class RenderGraph {
 public:
   struct Builder {
-    RenderPass &addPass(const char *name);
+    RenderPass &addPass(const char *name, VkPipelineStageFlagBits stages);
     RenderGraph build();
   };
 

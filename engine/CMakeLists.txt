@@ -41,6 +41,7 @@ add_library(engine
   src/rendering/render_pass.cpp
   src/core/mesh_loader.cpp
   src/core/pipeline_builder.cpp
+  src/core/immediate_submit.cpp
   src/gpu/gpu_buffer.cpp
   src/gpu/gpu_mesh_buffers.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp

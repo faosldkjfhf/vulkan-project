@@ -1,6 +1,7 @@
 #include "core/compute_pipeline.h"
 #include "core/descriptors.h"
 #include "core/device.h"
+#include "core/immedate_submit.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
 #include "imgui.h"
@@ -27,6 +28,8 @@ Renderer::Renderer(Pointer<core::Window> window, Pointer<core::Device> device, V
 Renderer::~Renderer() {}
 
 void Renderer::initialize() {
+  _immediateSubmit = std::make_shared<core::ImmediateSubmit>(_device);
+
   createSwapchain();
   createImageViews();
   initializeCommands();
@@ -116,11 +119,11 @@ void Renderer::initializeImgui() {
 }
 
 void Renderer::cleanup() {
+  _immediateSubmit->cleanup();
+
   for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
     _frames[i].deletionQueue.flush();
   }
-
-  // vkDestroyRenderPass(_device->device(), _renderPass, nullptr);
 
   _deletionQueue.flush();
 }
@@ -316,12 +319,6 @@ void Renderer::initializeCommands() {
     VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, &_frames[i].mainCommandBuffer));
   }
 
-  VK_CHECK(vkCreateCommandPool(_device->device(), &commandPoolInfo, nullptr, &_immCommandPool));
-  VkCommandBufferAllocateInfo cmdAllocInfo = init::commandBufferAllocateInfo(_immCommandPool);
-  VK_CHECK(vkAllocateCommandBuffers(_device->device(), &cmdAllocInfo, &_immCommandBuffer));
-
-  _deletionQueue.push_back([=, this]() { vkDestroyCommandPool(_device->device(), _immCommandPool, nullptr); });
-
   for (auto &frame : _frames) {
     frame.deletionQueue.push_back([&]() { vkDestroyCommandPool(_device->device(), frame.commandPool, nullptr); });
   }
@@ -336,9 +333,6 @@ void Renderer::initializeSyncStructures() {
     VK_CHECK(vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_frames[i].swapchainSemaphore));
     VK_CHECK(vkCreateFence(_device->device(), &fenceInfo, nullptr, &_frames[i].renderFence));
   }
-
-  vkCreateFence(_device->device(), &fenceInfo, nullptr, &_immFence);
-  _deletionQueue.push_back([&]() { vkDestroyFence(_device->device(), _immFence, nullptr); });
 
   for (auto &frame : _frames) {
     frame.deletionQueue.push_back([&]() { vkDestroySemaphore(_device->device(), frame.renderSemaphore, nullptr); });
@@ -399,25 +393,6 @@ void Renderer::endRenderPass(VkCommandBuffer commandBuffer) {
   VkSubmitInfo2 submitInfo = init::submitInfo(&cmdInfo, &signalInfo, &waitInfo);
 
   VK_CHECK(vkQueueSubmit2(_device->queue(), 1, &submitInfo, getCurrentFrame().renderFence));
-}
-
-void Renderer::immediateSubmit(std::function<void(VkCommandBuffer cmd)> &&function) {
-  VK_CHECK(vkResetFences(_device->device(), 1, &_immFence));
-  VK_CHECK(vkResetCommandBuffer(_immCommandBuffer, 0));
-
-  VkCommandBuffer cmd = _immCommandBuffer;
-
-  VkCommandBufferBeginInfo cmdBeginInfo = init::commandBufferBeginInfo(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-  VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-
-  function(cmd);
-
-  VK_CHECK(vkEndCommandBuffer(cmd));
-
-  VkCommandBufferSubmitInfo cmdInfo = init::commandBufferSubmitInfo(cmd);
-  VkSubmitInfo2 submitInfo = init::submitInfo(&cmdInfo, nullptr, nullptr);
-  VK_CHECK(vkQueueSubmit2(_device->queue(), 1, &submitInfo, _immFence));
-  VK_CHECK(vkWaitForFences(_device->device(), 1, &_immFence, true, UINT64_MAX));
 }
 
 void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {

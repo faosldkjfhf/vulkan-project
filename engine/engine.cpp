@@ -164,8 +164,10 @@ void Engine::initialize() {
   rect_indices[4] = 1;
   rect_indices[5] = 3;
 
-  _meshBuffers = utils::uploadMesh(_device, _renderer, rect_indices, rect_vertices);
-  _testMeshes = core::MeshLoader::loadGltfMeshes(_device, _renderer, "../resources/models/basicmesh.glb").value();
+  _meshBuffers = utils::uploadMesh(_device, _renderer->immediateSubmit(), rect_indices, rect_vertices);
+  // _testMeshes =
+  //     core::MeshLoader::loadGltfMeshes(_device, _renderer->immediateSubmit(), "../resources/models/basicmesh.glb")
+  //         .value();
 }
 
 void Engine::initializeSlang() {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "core/device.h"
+#include "core/immedate_submit.h"
 #include "gpu/gpu_mesh_buffers.h"
 #include "pch.h"
 #include "rendering/renderer.h"
@@ -269,7 +270,7 @@ inline slang::IModule *createSlangModule(Slang::ComPtr<slang::ISession> session,
   return module;
 }
 
-inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<rendering::Renderer> renderer,
+inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<core::ImmediateSubmit> immediateSubmit,
                                  std::span<uint32_t> indices, std::span<Vertex> vertices) {
   const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
   const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
@@ -298,7 +299,7 @@ inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<rendering
   memcpy(data, vertices.data(), vertexBufferSize);
   memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
 
-  renderer->immediateSubmit([&](VkCommandBuffer cmd) {
+  immediateSubmit->submit([&](VkCommandBuffer cmd) {
     VkBufferCopy vertexCopy = {};
     vertexCopy.size = vertexBufferSize;
     vertexCopy.srcOffset = 0;
