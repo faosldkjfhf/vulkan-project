@@ -2,6 +2,7 @@
 
 #include "core/compute_pipeline.h"
 #include "core/device.h"
+#include "core/mesh_loader.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
 #include "icallbacks.h"
@@ -48,7 +49,7 @@ private:
   VkPipeline _meshPipeline;
 
   GPUMeshBuffers _meshBuffers;
-  // Vector<Pointer<MeshAsset>> _testMeshes;
+  Vector<Pointer<MeshAsset>> _testMeshes;
 
   Slang::ComPtr<slang::IGlobalSession> _globalSession;
   Slang::ComPtr<slang::ISession> _session;

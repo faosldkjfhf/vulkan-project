@@ -1,10 +1,14 @@
 #pragma once
 
+#include "core/device.h"
+#include "gpu/gpu_mesh_buffers.h"
 #include "pch.h"
+#include "rendering/renderer.h"
 #include "utils/init.h"
 #include <cstring>
 #include <fstream>
 #include <slang-com-ptr.h>
+#include <span>
 #include <vulkan/vulkan_core.h>
 
 namespace bisky {
@@ -138,7 +142,7 @@ inline void transitionImage(VkCommandBuffer cmd, VkImage image, VkImageLayout cu
   vkCmdPipelineBarrier2(cmd, &depInfo);
 }
 
-static void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destination, VkExtent2D srcSize,
+inline void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destination, VkExtent2D srcSize,
                              VkExtent2D dstSize) {
   VkImageBlit2 blitRegion = {};
   blitRegion.sType = VK_STRUCTURE_TYPE_IMAGE_BLIT_2;
@@ -174,7 +178,7 @@ static void copyImageToImage(VkCommandBuffer cmd, VkImage source, VkImage destin
   vkCmdBlitImage2(cmd, &blitInfo);
 }
 
-static bool loadShaderModule(const char *filePath, VkDevice device, VkShaderModule *outModule) {
+inline bool loadShaderModule(const char *filePath, VkDevice device, VkShaderModule *outModule) {
   std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
   if (!file.is_open()) {
@@ -201,7 +205,7 @@ static bool loadShaderModule(const char *filePath, VkDevice device, VkShaderModu
   return true;
 }
 
-static bool loadShaderModule(Slang::ComPtr<slang::ISession> session, slang::IModule *module, VkDevice device,
+inline bool loadShaderModule(Slang::ComPtr<slang::ISession> session, slang::IModule *module, VkDevice device,
                              const char *entryPoint, VkShaderModule *outModule) {
   Slang::ComPtr<slang::IEntryPoint> stageEntryPoint;
   module->findEntryPointByName(entryPoint, stageEntryPoint.writeRef());
@@ -263,6 +267,54 @@ inline slang::IModule *createSlangModule(Slang::ComPtr<slang::ISession> session,
   }
 
   return module;
+}
+
+inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<rendering::Renderer> renderer,
+                                 std::span<uint32_t> indices, std::span<Vertex> vertices) {
+  const size_t vertexBufferSize = vertices.size() * sizeof(Vertex);
+  const size_t indexBufferSize = indices.size() * sizeof(uint32_t);
+  GPUMeshBuffers buffers;
+
+  GPUBuffer::Builder builder = {};
+  builder.allocator = device->allocator();
+
+  buffers.vertexBuffer = builder.build(vertexBufferSize,
+                                       VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                       VMA_MEMORY_USAGE_GPU_ONLY);
+
+  VkBufferDeviceAddressInfo deviceAddressInfo = {};
+  deviceAddressInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+  deviceAddressInfo.buffer = buffers.vertexBuffer.buffer;
+  buffers.vertexBufferAddress = vkGetBufferDeviceAddress(device->device(), &deviceAddressInfo);
+
+  buffers.indexBuffer = builder.build(
+      indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+
+  GPUBuffer staging =
+      builder.build(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+  void *data = staging.info.pMappedData;
+  memcpy(data, vertices.data(), vertexBufferSize);
+  memcpy((char *)data + vertexBufferSize, indices.data(), indexBufferSize);
+
+  renderer->immediateSubmit([&](VkCommandBuffer cmd) {
+    VkBufferCopy vertexCopy = {};
+    vertexCopy.size = vertexBufferSize;
+    vertexCopy.srcOffset = 0;
+    vertexCopy.dstOffset = 0;
+    vkCmdCopyBuffer(cmd, staging.buffer, buffers.vertexBuffer.buffer, 1, &vertexCopy);
+
+    VkBufferCopy indexCopy = {};
+    indexCopy.size = indexBufferSize;
+    indexCopy.srcOffset = vertexBufferSize;
+    indexCopy.dstOffset = 0;
+    vkCmdCopyBuffer(cmd, staging.buffer, buffers.indexBuffer.buffer, 1, &indexCopy);
+  });
+
+  staging.cleanup(device->allocator());
+
+  return buffers;
 }
 
 } // namespace utils

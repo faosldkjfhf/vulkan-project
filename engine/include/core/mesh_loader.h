@@ -1,13 +1,13 @@
 #pragma once
 
-#include "gpu/gpu_mesh_buffers.h"
-#include "pch.h"
-
 #include <fastgltf/core.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/tools.hpp>
 
-#include "engine.h"
+#include "core/device.h"
+#include "gpu/gpu_mesh_buffers.h"
+#include "rendering/renderer.h"
+#include "utils/utils.h"
 
 namespace bisky {
 
@@ -32,19 +32,23 @@ public:
   MeshLoader();
   ~MeshLoader();
 
-  static std::optional<Vector<Pointer<MeshAsset>>> loadGltfMeshes(Engine *engine, std::filesystem::path filePath) {
-    fastgltf::GltfDataBuffer data;
-    data.FromPath(filePath);
+  static std::optional<Vector<Pointer<MeshAsset>>>
+  loadGltfMeshes(Pointer<core::Device> device, Pointer<rendering::Renderer> renderer, std::filesystem::path filePath) {
+    auto data = fastgltf::GltfDataBuffer::FromPath(filePath);
+    if (data.error() != fastgltf::Error::None) {
+      return {};
+    }
 
     constexpr auto gltfOptions = fastgltf::Options::LoadExternalBuffers;
 
     fastgltf::Asset gltf;
-    fastgltf::Parser parser;
+    fastgltf::Parser parser{};
 
-    auto load = parser.loadGltfBinary(data, filePath.parent_path(), gltfOptions);
-    if (load) {
-      gltf = std::move(load.get());
+    auto asset = parser.loadGltf(data.get(), filePath.parent_path(), gltfOptions);
+    if (asset) {
+      gltf = std::move(asset.get());
     } else {
+      fmt::println("[ERROR] {}", fastgltf::to_underlying(asset.error()));
       return {};
     }
 
@@ -122,7 +126,8 @@ public:
         }
       }
 
-      newMesh.meshBuffers = engine->uploadMesh(indices, vertices);
+      // newMesh.meshBuffers = engine->uploadMesh(indices, vertices);
+      newMesh.meshBuffers = utils::uploadMesh(device, renderer, indices, vertices);
       meshes.emplace_back(std::make_shared<MeshAsset>(std::move(newMesh)));
     }
 

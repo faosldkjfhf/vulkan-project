@@ -1,6 +1,7 @@
 #include "engine.h"
 
 #include "core/compute_pipeline.h"
+#include "core/mesh_loader.h"
 #include "core/pipeline_builder.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -164,6 +165,7 @@ void Engine::initialize() {
   rect_indices[5] = 3;
 
   _meshBuffers = uploadMesh(rect_indices, rect_vertices);
+  _testMeshes = core::MeshLoader::loadGltfMeshes(_device, _renderer, "../resources/models/basicmesh.glb").value();
 }
 
 void Engine::initializeSlang() {
@@ -190,6 +192,10 @@ void Engine::initializeSlang() {
 }
 
 void Engine::cleanup() {
+  for (auto &asset : _testMeshes) {
+    asset->meshBuffers.cleanup(_device->allocator());
+  }
+
   _meshBuffers.cleanup(_device->allocator());
   vkDestroyPipelineLayout(_device->device(), _meshPipelineLayout, nullptr);
   vkDestroyPipeline(_device->device(), _meshPipeline, nullptr);
