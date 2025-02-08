@@ -110,6 +110,7 @@ void Engine::initialize() {
 
   VK_CHECK(vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_meshPipelineLayout));
 
+  // build our graphics pipeline
   core::PipelineBuilder builder;
   builder.layout = _meshPipelineLayout;
   _meshPipeline = builder.setShaders(triangleVertShader, triangleFragShader)
@@ -124,12 +125,14 @@ void Engine::initialize() {
                       .setDepthFormat(_renderer->depthImage().format)
                       .build(_device->device());
 
-  vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
-  vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
-
+  // load our meshes
   _testMeshes =
       core::MeshLoader::loadGltfMeshes(_device, _renderer->immediateSubmit(), "../resources/models/basicmesh.glb")
           .value();
+
+  // destroy the shader modules
+  vkDestroyShaderModule(_device->device(), triangleVertShader, nullptr);
+  vkDestroyShaderModule(_device->device(), triangleFragShader, nullptr);
 }
 
 void Engine::initializeSlang() {
