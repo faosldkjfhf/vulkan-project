@@ -7,9 +7,7 @@ namespace bisky {
 class GPUBuffer {
 public:
   struct Builder {
-    VmaAllocator allocator;
-
-    GPUBuffer build(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
+    GPUBuffer build(VmaAllocator allocator, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage);
   };
 
   friend class GPUMeshBuffers;

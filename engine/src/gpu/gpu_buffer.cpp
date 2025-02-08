@@ -2,7 +2,8 @@
 
 namespace bisky {
 
-GPUBuffer GPUBuffer::Builder::build(size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage) {
+GPUBuffer GPUBuffer::Builder::build(VmaAllocator allocator, size_t allocSize, VkBufferUsageFlags usage,
+                                    VmaMemoryUsage memoryUsage) {
   GPUBuffer buffer;
 
   VkBufferCreateInfo bufferInfo = {};

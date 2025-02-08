@@ -105,6 +105,8 @@ void Engine::initialize() {
   VkPipelineLayoutCreateInfo pipelineLayoutInfo = init::pipelineLayoutCreateInfo();
   pipelineLayoutInfo.pushConstantRangeCount = 1;
   pipelineLayoutInfo.pPushConstantRanges = &bufferRange;
+  pipelineLayoutInfo.setLayoutCount = 1;
+  pipelineLayoutInfo.pSetLayouts = &_renderer->singleImageLayout();
 
   VK_CHECK(vkCreatePipelineLayout(_device->device(), &pipelineLayoutInfo, nullptr, &_meshPipelineLayout));
 
@@ -115,7 +117,8 @@ void Engine::initialize() {
                       .setPolygonMode(VK_POLYGON_MODE_FILL)
                       .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
                       .setMultisamplingNone()
-                      .enableBlendingAdditive()
+                      .disableBlending()
+                      // .enableBlendingAdditive()
                       .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                       .setColorAttachmentFormat(_renderer->drawImage().format)
                       .setDepthFormat(_renderer->depthImage().format)

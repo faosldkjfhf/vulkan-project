@@ -12,6 +12,9 @@ cbuffer Constants {
   Vertex *vertices;
 };
 
+[vk::binding(0, 0)]
+Sampler2D texture;
+
 struct VertexOutput {
   float4 position : SV_Position;
   float2 uv : TEXCOORD;
@@ -33,8 +36,7 @@ VertexOutput vertMain(int vertexIndex: SV_VertexID) {
 
 [shader("fragment")]
 float4 fragMain(VertexOutput input) : SV_Target {
-  float4 color = input.color;
-
+  float4 color = texture.Sample(input.uv);
   return color;
 }
 

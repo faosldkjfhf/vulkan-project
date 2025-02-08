@@ -67,15 +67,21 @@ public:
   const AllocatedImage &depthImage() { return _depthImage; }
   Pointer<core::ImmediateSubmit> immediateSubmit() { return _immediateSubmit; }
   float &renderScale() { return _renderScale; }
+  VkDescriptorSetLayout &singleImageLayout() { return _singleImageDescriptorLayout; }
+
+  AllocatedImage createImage(VkExtent3D size, VkFormat format, VkImageUsageFlags usage, bool mipmapped = false);
+  AllocatedImage createImage(void *data, VkExtent3D size, VkFormat format, VkImageUsageFlags usage,
+                             bool mipmapped = false);
 
 private:
   void initialize();
+  void initializeDefaultData();
   void initializeImgui();
   void createSwapchain();
   void createImageViews();
-  void createRenderPass();
-  void createDepthResources();
-  void createFramebuffers();
+  // void createRenderPass();
+  // void createDepthResources();
+  // void createFramebuffers();
   void initializeCommands();
   void initializeSyncStructures();
   void initializeDescriptors();
@@ -98,6 +104,14 @@ private:
   VkFormat _format;
   VkExtent2D _extent;
 
+  AllocatedImage _whiteImage;
+  AllocatedImage _blackImage;
+  AllocatedImage _greyImage;
+  AllocatedImage _errorCheckerboardImage;
+
+  VkSampler _defaultSamplerLinear;
+  VkSampler _defaultSamplerNearest;
+
   core::DescriptorAllocator _globalDescriptorAllocator;
   core::DescriptorWriter _writer = {};
 
@@ -110,6 +124,7 @@ private:
 
   GPUSceneData _sceneData;
   VkDescriptorSetLayout _gpuSceneDescriptorLayout;
+  VkDescriptorSetLayout _singleImageDescriptorLayout;
 
   VkDescriptorPool _imguiPool;
 

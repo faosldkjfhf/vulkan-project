@@ -276,9 +276,7 @@ inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<core::Imm
   GPUMeshBuffers buffers;
 
   GPUBuffer::Builder builder = {};
-  builder.allocator = device->allocator();
-
-  buffers.vertexBuffer = builder.build(vertexBufferSize,
+  buffers.vertexBuffer = builder.build(device->allocator(), vertexBufferSize,
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                        VMA_MEMORY_USAGE_GPU_ONLY);
@@ -288,11 +286,12 @@ inline GPUMeshBuffers uploadMesh(Pointer<core::Device> device, Pointer<core::Imm
   deviceAddressInfo.buffer = buffers.vertexBuffer.buffer;
   buffers.vertexBufferAddress = vkGetBufferDeviceAddress(device->device(), &deviceAddressInfo);
 
-  buffers.indexBuffer = builder.build(
-      indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+  buffers.indexBuffer =
+      builder.build(device->allocator(), indexBufferSize,
+                    VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
 
-  GPUBuffer staging =
-      builder.build(vertexBufferSize + indexBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+  GPUBuffer staging = builder.build(device->allocator(), vertexBufferSize + indexBufferSize,
+                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
   void *data = staging.info.pMappedData;
   memcpy(data, vertices.data(), vertexBufferSize);

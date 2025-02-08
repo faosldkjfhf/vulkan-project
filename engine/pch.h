@@ -78,6 +78,11 @@ struct AllocatedImage {
   VmaAllocation allocation;
   VkExtent3D extent;
   VkFormat format;
+
+  inline void cleanup(VkDevice device, VmaAllocator allocator) {
+    vkDestroyImageView(device, imageView, nullptr);
+    vmaDestroyImage(allocator, image, allocation);
+  }
 };
 
 constexpr uint32_t FRAME_OVERLAP = 2;
