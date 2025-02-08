@@ -5,6 +5,7 @@
 #include "core/descriptors.h"
 #include "core/device.h"
 #include "core/immedate_submit.h"
+#include "core/mesh_loader.h"
 #include "core/model.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
@@ -34,8 +35,9 @@ public:
   void endRenderPass(VkCommandBuffer commandBuffer);
   void clear(VkCommandBuffer commandBuffer, uint32_t imageIndex);
   void draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout, VkPipeline graphicsPipeline,
-            GPUMeshBuffers mesh, uint32_t imageIndex);
-  void drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkPipeline pipeline, GPUMeshBuffers mesh);
+            Vector<Pointer<MeshAsset>> meshes, uint32_t imageIndex);
+  void drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkPipeline pipeline,
+                    Vector<Pointer<MeshAsset>> meshes);
   void drawImgui(VkCommandBuffer commandBuffer, VkImageView target);
   void setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor);
   bool acquireNextImage(uint32_t *imageIndex);
@@ -58,6 +60,7 @@ public:
   const VkDescriptorSetLayout &drawImageLayout() { return _drawImageDescriptorLayout; }
   const VkDescriptorSet &drawImageDescriptors() { return _drawImageDescriptors; }
   const AllocatedImage &drawImage() { return _drawImage; }
+  const AllocatedImage &depthImage() { return _depthImage; }
   Pointer<core::ImmediateSubmit> immediateSubmit() { return _immediateSubmit; }
 
 private:
@@ -79,6 +82,7 @@ private:
 
   Pointer<core::Window> _window;
   Pointer<core::Device> _device;
+  Pointer<core::ImmediateSubmit> _immediateSubmit;
 
   VkSwapchainKHR _swapchain;
   VkSwapchainKHR _oldSwapchain;
@@ -89,18 +93,14 @@ private:
   VkFormat _format;
   VkExtent2D _extent;
 
-  VkImage _depthImage;
-  VmaAllocation _depthAllocation;
-  VkImageView _depthImageView;
-
   core::DescriptorAllocator _globalDescriptorAllocator;
 
   VkDescriptorSet _drawImageDescriptors;
   VkDescriptorSetLayout _drawImageDescriptorLayout;
   AllocatedImage _drawImage;
+  AllocatedImage _depthImage;
   VkExtent2D _drawExtent;
 
-  Pointer<core::ImmediateSubmit> _immediateSubmit;
   VkDescriptorPool _imguiPool;
 
   FrameData _frames[FRAME_OVERLAP];

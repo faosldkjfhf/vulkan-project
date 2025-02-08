@@ -6,7 +6,6 @@
 
 #include "core/device.h"
 #include "gpu/gpu_mesh_buffers.h"
-#include "rendering/renderer.h"
 #include "utils/utils.h"
 
 namespace bisky {

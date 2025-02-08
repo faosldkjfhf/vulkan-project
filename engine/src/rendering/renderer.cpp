@@ -62,6 +62,23 @@ void Renderer::initialize() {
     vmaDestroyImage(_device->allocator(), _drawImage.image, _drawImage.allocation);
   });
 
+  _depthImage.format = VK_FORMAT_D32_SFLOAT;
+  _depthImage.extent = _drawImage.extent;
+  VkImageUsageFlags depthImageUsages = {};
+  depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+  VkImageCreateInfo depthImageInfo = init::imageCreateInfo(_depthImage.format, depthImageUsages, _depthImage.extent);
+  vmaCreateImage(_device->allocator(), &depthImageInfo, &allocInfo, &_depthImage.image, &_depthImage.allocation,
+                 nullptr);
+  VkImageViewCreateInfo depthViewInfo =
+      init::imageViewCreateInfo(_depthImage.format, _depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+  VK_CHECK(vkCreateImageView(_device->device(), &depthViewInfo, nullptr, &_depthImage.imageView));
+
+  _deletionQueue.push_back([&]() {
+    vkDestroyImageView(_device->device(), _depthImage.imageView, nullptr);
+    vmaDestroyImage(_device->allocator(), _depthImage.image, _depthImage.allocation);
+  });
+
   initializeDescriptors();
   initializeImgui();
 }
@@ -272,41 +289,41 @@ void Renderer::createRenderPass() {
 }
 
 void Renderer::createDepthResources() {
-  VkFormat depthFormat = _device->findDepthFormat();
-
-  _device->createImage(_extent.width, _extent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-                       VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _depthImage,
-                       _depthAllocation);
-
-  _depthImageView = _device->createImageView(_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-
-  _device->transitionImageLayout(_depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-                                 VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-
-  _deletionQueue.push_back([&]() { vkDestroyImageView(_device->device(), _depthImageView, nullptr); });
-  _deletionQueue.push_back([&]() { vmaDestroyImage(_device->allocator(), _depthImage, _depthAllocation); });
+  // VkFormat depthFormat = _device->findDepthFormat();
+  //
+  // _device->createImage(_extent.width, _extent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL,
+  //                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _depthImage,
+  //                      _depthAllocation);
+  //
+  // _depthImageView = _device->createImageView(_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
+  //
+  // _device->transitionImageLayout(_depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
+  //                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+  //
+  // _deletionQueue.push_back([&]() { vkDestroyImageView(_device->device(), _depthImageView, nullptr); });
+  // _deletionQueue.push_back([&]() { vmaDestroyImage(_device->allocator(), _depthImage, _depthAllocation); });
 }
 
 void Renderer::createFramebuffers() {
-  _framebuffers.resize(_imageViews.size());
-  for (size_t i = 0; i < _imageViews.size(); i++) {
-    std::array<VkImageView, 2> attachments = {_imageViews[i], _depthImageView};
-
-    VkFramebufferCreateInfo framebufferInfo{};
-    framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    framebufferInfo.renderPass = _renderPass;
-    framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    framebufferInfo.pAttachments = attachments.data();
-    framebufferInfo.width = _extent.width;
-    framebufferInfo.height = _extent.height;
-    framebufferInfo.layers = 1;
-
-    VK_CHECK(vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]));
-  }
-
-  for (auto &framebuffer : _framebuffers) {
-    _deletionQueue.push_back([&]() { vkDestroyFramebuffer(_device->device(), framebuffer, nullptr); });
-  }
+  // _framebuffers.resize(_imageViews.size());
+  // for (size_t i = 0; i < _imageViews.size(); i++) {
+  //   std::array<VkImageView, 2> attachments = {_imageViews[i], _depthImageView};
+  //
+  //   VkFramebufferCreateInfo framebufferInfo{};
+  //   framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+  //   framebufferInfo.renderPass = _renderPass;
+  //   framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  //   framebufferInfo.pAttachments = attachments.data();
+  //   framebufferInfo.width = _extent.width;
+  //   framebufferInfo.height = _extent.height;
+  //   framebufferInfo.layers = 1;
+  //
+  //   VK_CHECK(vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]));
+  // }
+  //
+  // for (auto &framebuffer : _framebuffers) {
+  //   _deletionQueue.push_back([&]() { vkDestroyFramebuffer(_device->device(), framebuffer, nullptr); });
+  // }
 }
 
 void Renderer::initializeCommands() {
@@ -407,7 +424,7 @@ void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 }
 
 void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout,
-                    VkPipeline graphicsPipeline, GPUMeshBuffers mesh, uint32_t imageIndex) {
+                    VkPipeline graphicsPipeline, Vector<Pointer<MeshAsset>> meshes, uint32_t imageIndex) {
   _drawExtent.width = _drawImage.extent.width;
   _drawExtent.height = _drawImage.extent.height;
 
@@ -432,8 +449,10 @@ void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipe
 
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_GENERAL,
                          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+  utils::transitionImage(commandBuffer, _depthImage.image, VK_IMAGE_LAYOUT_UNDEFINED,
+                         VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
 
-  drawGeometry(commandBuffer, layout, graphicsPipeline, mesh);
+  drawGeometry(commandBuffer, layout, graphicsPipeline, meshes);
 
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -456,9 +475,12 @@ void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipe
 }
 
 void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layout, VkPipeline pipeline,
-                            GPUMeshBuffers mesh) {
-  VkRenderingAttachmentInfo colorAttachment = init::attachmentInfo(_drawImage.imageView, nullptr);
-  VkRenderingInfo renderInfo = init::renderingInfo(_drawExtent, &colorAttachment, nullptr);
+                            Vector<Pointer<MeshAsset>> meshes) {
+  VkRenderingAttachmentInfo colorAttachment =
+      init::attachmentInfo(_drawImage.imageView, nullptr, VK_IMAGE_LAYOUT_GENERAL);
+  VkRenderingAttachmentInfo depthAttachment =
+      init::depthAttachmentInfo(_depthImage.imageView, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL);
+  VkRenderingInfo renderInfo = init::renderingInfo(_drawExtent, &colorAttachment, &depthAttachment);
   vkCmdBeginRendering(commandBuffer, &renderInfo);
 
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
@@ -482,13 +504,17 @@ void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layo
 
   // vkCmdDraw(commandBuffer, 3, 1, 0, 0);
 
+  glm::mat4 view = glm::lookAt(glm::vec3(0.0f, 0.0f, 5.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+  glm::mat4 projection = glm::perspective(glm::radians(70.0f), (float)_extent.width / _extent.height, 100.0f, 0.1f);
+  projection[1][1] *= -1;
+
   GPUPushConstants pushConstants = {};
-  pushConstants.worldMatrix = glm::mat4(1.0f);
-  pushConstants.vertexBuffer = mesh.vertexBufferAddress;
+  pushConstants.worldMatrix = projection * view;
+  pushConstants.vertexBuffer = meshes[2]->meshBuffers.vertexBufferAddress;
 
   vkCmdPushConstants(commandBuffer, layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(pushConstants), &pushConstants);
-  vkCmdBindIndexBuffer(commandBuffer, mesh.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
-  vkCmdDrawIndexed(commandBuffer, 6, 1, 0, 0, 0);
+  vkCmdBindIndexBuffer(commandBuffer, meshes[2]->meshBuffers.indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+  vkCmdDrawIndexed(commandBuffer, meshes[2]->surfaces[0].count, 1, meshes[2]->surfaces[0].startIndex, 0, 0);
 
   vkCmdEndRendering(commandBuffer);
 }

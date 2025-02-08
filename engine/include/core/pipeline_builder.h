@@ -12,15 +12,16 @@ public:
 
   void clear();
 
-  void setColorAttachmentFormat(VkFormat format);
-  void setDepthFormat(VkFormat format);
-  void disableDepthTest();
-  void disableBlending();
-  void setMultisamplingNone();
-  void setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
-  void setPolygonMode(VkPolygonMode mode);
-  void setInputTopology(VkPrimitiveTopology topology);
-  void setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+  PipelineBuilder &setColorAttachmentFormat(VkFormat format);
+  PipelineBuilder &setDepthFormat(VkFormat format);
+  PipelineBuilder &disableDepthTest();
+  PipelineBuilder &disableBlending();
+  PipelineBuilder &setMultisamplingNone();
+  PipelineBuilder &setCullMode(VkCullModeFlags cullMode, VkFrontFace frontFace);
+  PipelineBuilder &setPolygonMode(VkPolygonMode mode);
+  PipelineBuilder &setInputTopology(VkPrimitiveTopology topology);
+  PipelineBuilder &setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
+  PipelineBuilder &enableDepthTest(bool depthWriteEnable, VkCompareOp op);
   VkPipeline build(VkDevice device);
 
   Vector<VkPipelineShaderStageCreateInfo> shaderStages;

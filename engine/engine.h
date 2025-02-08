@@ -40,13 +40,9 @@ private:
   Vector<ComputeEffect> _backgroundEffects;
   int _currentBackgroundEffect = 0;
 
-  VkPipelineLayout _trianglePipelineLayout;
-  VkPipeline _trianglePipeline;
-
   VkPipelineLayout _meshPipelineLayout;
   VkPipeline _meshPipeline;
 
-  GPUMeshBuffers _meshBuffers;
   Vector<Pointer<MeshAsset>> _testMeshes;
 
   Slang::ComPtr<slang::IGlobalSession> _globalSession;

@@ -4,7 +4,6 @@
 #include "core/immedate_submit.h"
 #include "gpu/gpu_mesh_buffers.h"
 #include "pch.h"
-#include "rendering/renderer.h"
 #include "utils/init.h"
 #include <cstring>
 #include <fstream>
