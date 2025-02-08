@@ -4,13 +4,15 @@
 namespace bisky {
 namespace core {
 
-void DescriptorLayoutBuilder::add(uint32_t binding, VkDescriptorType type) {
+DescriptorLayoutBuilder &DescriptorLayoutBuilder::add(uint32_t binding, VkDescriptorType type) {
   VkDescriptorSetLayoutBinding newbind = {};
   newbind.descriptorType = type;
   newbind.binding = binding;
   newbind.descriptorCount = 1;
 
   bindings.push_back(newbind);
+
+  return *this;
 }
 
 void DescriptorLayoutBuilder::clear() { bindings.clear(); }

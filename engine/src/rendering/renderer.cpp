@@ -1,4 +1,6 @@
 #include "core/compute_pipeline.h"
+#include "core/descriptor_allocator_growable.h"
+#include "core/descriptor_writer.h"
 #include "core/descriptors.h"
 #include "core/device.h"
 #include "core/immedate_submit.h"
@@ -34,50 +36,6 @@ void Renderer::initialize() {
   createImageViews();
   initializeCommands();
   initializeSyncStructures();
-
-  VkExtent3D drawImageExtent = {_extent.width, _extent.height, 1};
-
-  _drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
-  _drawImage.extent = drawImageExtent;
-
-  VkImageUsageFlags drawImageUsages = {};
-  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-  drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
-  drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
-  VkImageCreateInfo imgInfo = init::imageCreateInfo(_drawImage.format, drawImageUsages, drawImageExtent);
-  VmaAllocationCreateInfo allocInfo = {};
-  allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-  allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-  VK_CHECK(
-      vmaCreateImage(_device->allocator(), &imgInfo, &allocInfo, &_drawImage.image, &_drawImage.allocation, nullptr));
-
-  VkImageViewCreateInfo viewInfo =
-      init::imageViewCreateInfo(_drawImage.format, _drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
-  VK_CHECK(vkCreateImageView(_device->device(), &viewInfo, nullptr, &_drawImage.imageView));
-
-  _deletionQueue.push_back([&]() {
-    vkDestroyImageView(_device->device(), _drawImage.imageView, nullptr);
-    vmaDestroyImage(_device->allocator(), _drawImage.image, _drawImage.allocation);
-  });
-
-  _depthImage.format = VK_FORMAT_D32_SFLOAT;
-  _depthImage.extent = _drawImage.extent;
-  VkImageUsageFlags depthImageUsages = {};
-  depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
-  VkImageCreateInfo depthImageInfo = init::imageCreateInfo(_depthImage.format, depthImageUsages, _depthImage.extent);
-  vmaCreateImage(_device->allocator(), &depthImageInfo, &allocInfo, &_depthImage.image, &_depthImage.allocation,
-                 nullptr);
-  VkImageViewCreateInfo depthViewInfo =
-      init::imageViewCreateInfo(_depthImage.format, _depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
-  VK_CHECK(vkCreateImageView(_device->device(), &depthViewInfo, nullptr, &_depthImage.imageView));
-
-  _deletionQueue.push_back([&]() {
-    vkDestroyImageView(_device->device(), _depthImage.imageView, nullptr);
-    vmaDestroyImage(_device->allocator(), _depthImage.image, _depthImage.allocation);
-  });
 
   initializeDescriptors();
   initializeImgui();
@@ -128,19 +86,22 @@ void Renderer::initializeImgui() {
 
   ImGui_ImplVulkan_Init(&initInfo);
   ImGui_ImplVulkan_CreateFontsTexture();
-
-  _deletionQueue.push_back([&]() {
-    ImGui_ImplVulkan_Shutdown();
-    vkDestroyDescriptorPool(_device->device(), _imguiPool, nullptr);
-  });
 }
 
 void Renderer::cleanup() {
+  for (auto &frame : _frames) {
+    vkDestroySemaphore(_device->device(), frame.renderSemaphore, nullptr);
+    vkDestroySemaphore(_device->device(), frame.swapchainSemaphore, nullptr);
+    vkDestroyFence(_device->device(), frame.renderFence, nullptr);
+    vkDestroyCommandPool(_device->device(), frame.commandPool, nullptr);
+
+    frame.deletionQueue.flush();
+  }
+
   _immediateSubmit->cleanup();
 
-  for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-    _frames[i].deletionQueue.flush();
-  }
+  ImGui_ImplVulkan_Shutdown();
+  vkDestroyDescriptorPool(_device->device(), _imguiPool, nullptr);
 
   _deletionQueue.flush();
 }
@@ -220,6 +181,50 @@ void Renderer::createSwapchain() {
   _extent = extent;
 
   _deletionQueue.push_back([&]() { vkDestroySwapchainKHR(_device->device(), _swapchain, nullptr); });
+
+  VkExtent3D drawImageExtent = {_extent.width, _extent.height, 1};
+
+  _drawImage.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+  _drawImage.extent = drawImageExtent;
+
+  VkImageUsageFlags drawImageUsages = {};
+  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_STORAGE_BIT;
+  drawImageUsages |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+  VkImageCreateInfo imgInfo = init::imageCreateInfo(_drawImage.format, drawImageUsages, drawImageExtent);
+  VmaAllocationCreateInfo allocInfo = {};
+  allocInfo.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+  allocInfo.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  VK_CHECK(
+      vmaCreateImage(_device->allocator(), &imgInfo, &allocInfo, &_drawImage.image, &_drawImage.allocation, nullptr));
+
+  VkImageViewCreateInfo viewInfo =
+      init::imageViewCreateInfo(_drawImage.format, _drawImage.image, VK_IMAGE_ASPECT_COLOR_BIT);
+  VK_CHECK(vkCreateImageView(_device->device(), &viewInfo, nullptr, &_drawImage.imageView));
+
+  _deletionQueue.push_back([&]() {
+    vkDestroyImageView(_device->device(), _drawImage.imageView, nullptr);
+    vmaDestroyImage(_device->allocator(), _drawImage.image, _drawImage.allocation);
+  });
+
+  _depthImage.format = VK_FORMAT_D32_SFLOAT;
+  _depthImage.extent = _drawImage.extent;
+  VkImageUsageFlags depthImageUsages = {};
+  depthImageUsages |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+  VkImageCreateInfo depthImageInfo = init::imageCreateInfo(_depthImage.format, depthImageUsages, _depthImage.extent);
+  vmaCreateImage(_device->allocator(), &depthImageInfo, &allocInfo, &_depthImage.image, &_depthImage.allocation,
+                 nullptr);
+  VkImageViewCreateInfo depthViewInfo =
+      init::imageViewCreateInfo(_depthImage.format, _depthImage.image, VK_IMAGE_ASPECT_DEPTH_BIT);
+  VK_CHECK(vkCreateImageView(_device->device(), &depthViewInfo, nullptr, &_depthImage.imageView));
+
+  _deletionQueue.push_back([&]() {
+    vkDestroyImageView(_device->device(), _depthImage.imageView, nullptr);
+    vmaDestroyImage(_device->allocator(), _depthImage.image, _depthImage.allocation);
+  });
 }
 
 void Renderer::createImageViews() {
@@ -234,58 +239,59 @@ void Renderer::createImageViews() {
 }
 
 void Renderer::createRenderPass() {
-  VkAttachmentDescription colorAttachment = {};
-  colorAttachment.format = _format;
-  colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-  colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-  VkAttachmentDescription depthAttachment = {};
-  depthAttachment.format = _device->findDepthFormat();
-  depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-  depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-  depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-  depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-  depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-  depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-  VkAttachmentReference depthAttachmentRef = {};
-  depthAttachmentRef.attachment = 1;
-  depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-  VkSubpassDependency dependency = {};
-  dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-  dependency.dstSubpass = 0;
-  dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-  dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-  dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-  dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-  VkAttachmentReference colorAttachmentRef = {};
-  colorAttachmentRef.attachment = 0;
-  colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-  VkSubpassDescription subpass = {};
-  subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-  subpass.colorAttachmentCount = 1;
-  subpass.pColorAttachments = &colorAttachmentRef;
-  subpass.pDepthStencilAttachment = &depthAttachmentRef;
-
-  std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-  VkRenderPassCreateInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-  renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-  renderPassInfo.pAttachments = attachments.data();
-  renderPassInfo.subpassCount = 1;
-  renderPassInfo.pSubpasses = &subpass;
-  renderPassInfo.dependencyCount = 1;
-  renderPassInfo.pDependencies = &dependency;
-
-  VK_CHECK(vkCreateRenderPass(_device->device(), &renderPassInfo, nullptr, &_renderPass));
+  // VkAttachmentDescription colorAttachment = {};
+  // colorAttachment.format = _format;
+  // colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  // colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  // colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+  // colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  // colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  // colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  // colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+  //
+  // VkAttachmentDescription depthAttachment = {};
+  // depthAttachment.format = _device->findDepthFormat();
+  // depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+  // depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+  // depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  // depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+  // depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+  // depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+  // depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  //
+  // VkAttachmentReference depthAttachmentRef = {};
+  // depthAttachmentRef.attachment = 1;
+  // depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+  //
+  // VkSubpassDependency dependency = {};
+  // dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+  // dependency.dstSubpass = 0;
+  // dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+  // VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  // dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+  // VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT; dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+  // VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+  //
+  // VkAttachmentReference colorAttachmentRef = {};
+  // colorAttachmentRef.attachment = 0;
+  // colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+  //
+  // VkSubpassDescription subpass = {};
+  // subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  // subpass.colorAttachmentCount = 1;
+  // subpass.pColorAttachments = &colorAttachmentRef;
+  // subpass.pDepthStencilAttachment = &depthAttachmentRef;
+  //
+  // std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
+  // VkRenderPassCreateInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
+  // renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+  // renderPassInfo.pAttachments = attachments.data();
+  // renderPassInfo.subpassCount = 1;
+  // renderPassInfo.pSubpasses = &subpass;
+  // renderPassInfo.dependencyCount = 1;
+  // renderPassInfo.pDependencies = &dependency;
+  //
+  // VK_CHECK(vkCreateRenderPass(_device->device(), &renderPassInfo, nullptr, &_renderPass));
 }
 
 void Renderer::createDepthResources() {
@@ -335,10 +341,6 @@ void Renderer::initializeCommands() {
     VkCommandBufferAllocateInfo allocInfo = init::commandBufferAllocateInfo(_frames[i].commandPool);
     VK_CHECK(vkAllocateCommandBuffers(_device->device(), &allocInfo, &_frames[i].mainCommandBuffer));
   }
-
-  for (auto &frame : _frames) {
-    frame.deletionQueue.push_back([&]() { vkDestroyCommandPool(_device->device(), frame.commandPool, nullptr); });
-  }
 }
 
 void Renderer::initializeSyncStructures() {
@@ -350,12 +352,6 @@ void Renderer::initializeSyncStructures() {
     VK_CHECK(vkCreateSemaphore(_device->device(), &semaphoreInfo, nullptr, &_frames[i].swapchainSemaphore));
     VK_CHECK(vkCreateFence(_device->device(), &fenceInfo, nullptr, &_frames[i].renderFence));
   }
-
-  for (auto &frame : _frames) {
-    frame.deletionQueue.push_back([&]() { vkDestroySemaphore(_device->device(), frame.renderSemaphore, nullptr); });
-    frame.deletionQueue.push_back([&]() { vkDestroySemaphore(_device->device(), frame.swapchainSemaphore, nullptr); });
-    frame.deletionQueue.push_back([&]() { vkDestroyFence(_device->device(), frame.renderFence, nullptr); });
-  }
 }
 
 void Renderer::initializeDescriptors() {
@@ -363,24 +359,36 @@ void Renderer::initializeDescriptors() {
 
   _globalDescriptorAllocator.initPool(_device->device(), 10, sizes);
 
-  core::DescriptorLayoutBuilder builder;
-  builder.add(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-  _drawImageDescriptorLayout = builder.build(_device->device(), VK_SHADER_STAGE_COMPUTE_BIT);
-  _drawImageDescriptors = _globalDescriptorAllocator.allocate(_device->device(), _drawImageDescriptorLayout);
+  {
+    core::DescriptorLayoutBuilder builder;
+    _drawImageDescriptorLayout =
+        builder.add(0, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE).build(_device->device(), VK_SHADER_STAGE_COMPUTE_BIT);
+    _drawImageDescriptors = _globalDescriptorAllocator.allocate(_device->device(), _drawImageDescriptorLayout);
+  }
+  {
+    core::DescriptorLayoutBuilder builder;
+    _gpuSceneDescriptorLayout =
+        builder.add(0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+            .build(_device->device(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  }
 
-  VkDescriptorImageInfo imageInfo = {};
-  imageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-  imageInfo.imageView = _drawImage.imageView;
+  core::DescriptorWriter writer;
+  writer.writeImage(0, _drawImage.imageView, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
+  writer.updateSet(_device->device(), _drawImageDescriptors);
 
-  VkWriteDescriptorSet drawImageWrite = {};
-  drawImageWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  drawImageWrite.dstBinding = 0;
-  drawImageWrite.dstSet = _drawImageDescriptors;
-  drawImageWrite.descriptorCount = 1;
-  drawImageWrite.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-  drawImageWrite.pImageInfo = &imageInfo;
+  for (int i = 0; i < FRAME_OVERLAP; i++) {
+    Vector<core::DescriptorAllocatorGrowable::PoolSizeRatio> frameSizes = {
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 3},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 3},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 4},
+    };
 
-  vkUpdateDescriptorSets(_device->device(), 1, &drawImageWrite, 0, nullptr);
+    _frames[i].frameDescriptors = core::DescriptorAllocatorGrowable{};
+    _frames[i].frameDescriptors.init(_device->device(), 1000, frameSizes);
+
+    _deletionQueue.push_back([&, i]() { _frames[i].frameDescriptors.destroyPools(_device->device()); });
+  }
 
   _deletionQueue.push_back([&]() {
     _globalDescriptorAllocator.destroyPool(_device->device());
@@ -425,8 +433,9 @@ void Renderer::clear(VkCommandBuffer commandBuffer, uint32_t imageIndex) {
 
 void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipelineLayout layout,
                     VkPipeline graphicsPipeline, Vector<Pointer<MeshAsset>> meshes, uint32_t imageIndex) {
-  _drawExtent.width = _drawImage.extent.width;
-  _drawExtent.height = _drawImage.extent.height;
+
+  _drawExtent.height = std::min(_extent.height, _drawImage.extent.height) * _renderScale;
+  _drawExtent.width = std::min(_extent.width, _drawImage.extent.width) * _renderScale;
 
   utils::transitionImage(commandBuffer, _drawImage.image, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -439,8 +448,6 @@ void Renderer::draw(VkCommandBuffer commandBuffer, ComputeEffect &effect, VkPipe
   VkImageSubresourceRange clearRange = init::imageSubresourceRange(VK_IMAGE_ASPECT_COLOR_BIT);
 
   // bind the compute pipeline for drawing
-  // computePipeline->bind(commandBuffer);
-  // computePipeline->executeDispatch(commandBuffer, std::ceil(_extent.width / 16), std::ceil(_extent.height / 16), 1);
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, effect.pipeline);
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, effect.layout, 0, 1, &_drawImageDescriptors, 0,
                           nullptr);
@@ -508,6 +515,20 @@ void Renderer::drawGeometry(VkCommandBuffer commandBuffer, VkPipelineLayout layo
   glm::mat4 projection = glm::perspective(glm::radians(70.0f), (float)_extent.width / _extent.height, 100.0f, 0.1f);
   projection[1][1] *= -1;
 
+  GPUBuffer::Builder builder;
+  GPUBuffer gpuSceneDataBuffer =
+      builder.build(sizeof(GPUSceneData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+  getCurrentFrame().deletionQueue.push_back([&]() { gpuSceneDataBuffer.cleanup(_device->allocator()); });
+
+  GPUSceneData *sceneUniformData = (GPUSceneData *)gpuSceneDataBuffer.info.pMappedData;
+  *sceneUniformData = _sceneData;
+  VkDescriptorSet globalDescriptor =
+      getCurrentFrame().frameDescriptors.allocate(_device->device(), _gpuSceneDescriptorLayout);
+
+  core::DescriptorWriter writer;
+  writer.writeBuffer(0, gpuSceneDataBuffer.buffer, sizeof(gpuSceneDataBuffer), 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+  writer.updateSet(_device->device(), globalDescriptor);
+
   GPUPushConstants pushConstants = {};
   pushConstants.worldMatrix = projection * view;
   pushConstants.vertexBuffer = meshes[2]->meshBuffers.vertexBufferAddress;
@@ -563,6 +584,7 @@ void Renderer::present(uint32_t imageIndex) {
   if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || _framebufferResized) {
     _framebufferResized = false;
     recreate();
+    return;
   } else if (result != VK_SUCCESS) {
     throw std::runtime_error("failed to present swapchain image");
   }
@@ -590,8 +612,7 @@ void Renderer::recreate() {
 
   createSwapchain();
   createImageViews();
-  // createDepthResources();
-  // createFramebuffers();
+  initializeDescriptors();
 }
 
 } // namespace rendering

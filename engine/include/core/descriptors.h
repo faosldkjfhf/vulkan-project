@@ -7,8 +7,9 @@ namespace core {
 
 struct DescriptorLayoutBuilder {
   std::vector<VkDescriptorSetLayoutBinding> bindings;
-  void add(uint32_t binding, VkDescriptorType type);
   void clear();
+
+  DescriptorLayoutBuilder &add(uint32_t binding, VkDescriptorType type);
   VkDescriptorSetLayout build(VkDevice device, VkShaderStageFlags shaderStages, void *pNext = nullptr,
                               VkDescriptorSetLayoutCreateFlags flags = 0);
 };

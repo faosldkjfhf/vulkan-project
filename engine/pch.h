@@ -25,8 +25,6 @@
 #include <tiny_obj_loader.h>
 #include <vk_mem_alloc.h>
 
-#include "core/deletion_queue.h"
-
 #define VK_CHECK(x)                                                                                                    \
   do {                                                                                                                 \
     VkResult err = x;                                                                                                  \
@@ -45,16 +43,6 @@ struct QueueFamilyIndices {
   std::optional<uint32_t> queueFamily;
 
   bool isComplete() { return queueFamily.has_value(); }
-};
-
-struct FrameData {
-  VkCommandPool commandPool;
-  VkCommandBuffer mainCommandBuffer;
-  VkSemaphore swapchainSemaphore;
-  VkSemaphore renderSemaphore;
-  VkFence renderFence;
-
-  bisky::core::DeletionQueue deletionQueue;
 };
 
 struct Vertex {

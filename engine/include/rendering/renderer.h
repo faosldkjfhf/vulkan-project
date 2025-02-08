@@ -2,6 +2,8 @@
 
 #include "core/compute_pipeline.h"
 #include "core/deletion_queue.h"
+#include "core/descriptor_allocator_growable.h"
+#include "core/descriptor_writer.h"
 #include "core/descriptors.h"
 #include "core/device.h"
 #include "core/immedate_submit.h"
@@ -9,7 +11,9 @@
 #include "core/model.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
+#include "gpu/gpu_scene_data.h"
 #include "pch.h"
+#include "rendering/frame_data.h"
 
 namespace bisky {
 
@@ -62,6 +66,7 @@ public:
   const AllocatedImage &drawImage() { return _drawImage; }
   const AllocatedImage &depthImage() { return _depthImage; }
   Pointer<core::ImmediateSubmit> immediateSubmit() { return _immediateSubmit; }
+  float &renderScale() { return _renderScale; }
 
 private:
   void initialize();
@@ -94,12 +99,17 @@ private:
   VkExtent2D _extent;
 
   core::DescriptorAllocator _globalDescriptorAllocator;
+  core::DescriptorWriter _writer = {};
 
   VkDescriptorSet _drawImageDescriptors;
   VkDescriptorSetLayout _drawImageDescriptorLayout;
   AllocatedImage _drawImage;
   AllocatedImage _depthImage;
   VkExtent2D _drawExtent;
+  float _renderScale = 1.0f;
+
+  GPUSceneData _sceneData;
+  VkDescriptorSetLayout _gpuSceneDescriptorLayout;
 
   VkDescriptorPool _imguiPool;
 

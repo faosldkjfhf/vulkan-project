@@ -44,6 +44,8 @@ add_library(engine
   src/core/immediate_submit.cpp
   src/gpu/gpu_buffer.cpp
   src/gpu/gpu_mesh_buffers.cpp
+  src/core/descriptor_allocator_growable.cpp
+  src/core/descriptor_writer.cpp
   libs/imgui/imgui.cpp libs/imgui/imgui_draw.cpp
   libs/imgui/imgui_tables.cpp libs/imgui/imgui_widgets.cpp
   libs/imgui/backends/imgui_impl_vulkan.cpp libs/imgui/backends/imgui_impl_glfw.cpp)

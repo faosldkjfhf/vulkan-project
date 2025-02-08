@@ -115,7 +115,7 @@ void Engine::initialize() {
                       .setPolygonMode(VK_POLYGON_MODE_FILL)
                       .setCullMode(VK_CULL_MODE_NONE, VK_FRONT_FACE_CLOCKWISE)
                       .setMultisamplingNone()
-                      .disableBlending()
+                      .enableBlendingAdditive()
                       .enableDepthTest(true, VK_COMPARE_OP_GREATER_OR_EQUAL)
                       .setColorAttachmentFormat(_renderer->drawImage().format)
                       .setDepthFormat(_renderer->depthImage().format)
@@ -195,6 +195,7 @@ void Engine::render() {
 
   ComputeEffect &selected = _backgroundEffects[_currentBackgroundEffect];
 
+  ImGui::SliderFloat("Render Scale", &_renderer->renderScale(), 0.3f, 1.0f);
   ImGui::Text("Selected Effect: %s", selected.name);
   ImGui::SliderInt("Effect Index", &_currentBackgroundEffect, 0, 1);
   ImGui::InputFloat4("data1", (float *)&selected.data.data1);
@@ -208,6 +209,10 @@ void Engine::render() {
 
   // reset fences and wait for next fence
   _renderer->waitForFence();
+
+  // reset our descriptor allocators
+  _renderer->getCurrentFrame().deletionQueue.flush();
+  _renderer->getCurrentFrame().frameDescriptors.clearPools(_device->device());
 
   // try to acquire the next image
   uint32_t imageIndex;

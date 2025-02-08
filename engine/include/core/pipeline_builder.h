@@ -22,6 +22,8 @@ public:
   PipelineBuilder &setInputTopology(VkPrimitiveTopology topology);
   PipelineBuilder &setShaders(VkShaderModule vertexShader, VkShaderModule fragmentShader);
   PipelineBuilder &enableDepthTest(bool depthWriteEnable, VkCompareOp op);
+  PipelineBuilder &enableBlendingAdditive();
+  PipelineBuilder &enableBlendingAlphaBlend();
   VkPipeline build(VkDevice device);
 
   Vector<VkPipelineShaderStageCreateInfo> shaderStages;
