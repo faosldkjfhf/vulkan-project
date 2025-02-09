@@ -71,15 +71,6 @@ void Renderer::initializeDefaultData() {
   sample.magFilter = VK_FILTER_LINEAR;
   sample.minFilter = VK_FILTER_LINEAR;
   VK_CHECK(vkCreateSampler(_device->device(), &sample, nullptr, &_defaultSamplerLinear));
-
-  _deletionQueue.push_back([&]() {
-    vkDestroySampler(_device->device(), _defaultSamplerLinear, nullptr);
-    vkDestroySampler(_device->device(), _defaultSamplerNearest, nullptr);
-    _whiteImage.cleanup(_device->device(), _device->allocator());
-    _blackImage.cleanup(_device->device(), _device->allocator());
-    _greyImage.cleanup(_device->device(), _device->allocator());
-    _errorCheckerboardImage.cleanup(_device->device(), _device->allocator());
-  });
 }
 
 void Renderer::initializeImgui() {
@@ -130,12 +121,18 @@ void Renderer::initializeImgui() {
 }
 
 void Renderer::cleanup() {
+  vkDestroySampler(_device->device(), _defaultSamplerLinear, nullptr);
+  vkDestroySampler(_device->device(), _defaultSamplerNearest, nullptr);
+  _whiteImage.cleanup(_device->device(), _device->allocator());
+  _blackImage.cleanup(_device->device(), _device->allocator());
+  _greyImage.cleanup(_device->device(), _device->allocator());
+  _errorCheckerboardImage.cleanup(_device->device(), _device->allocator());
+
   for (auto &frame : _frames) {
     vkDestroySemaphore(_device->device(), frame.renderSemaphore, nullptr);
     vkDestroySemaphore(_device->device(), frame.swapchainSemaphore, nullptr);
     vkDestroyFence(_device->device(), frame.renderFence, nullptr);
     vkDestroyCommandPool(_device->device(), frame.commandPool, nullptr);
-
     frame.deletionQueue.flush();
   }
 
@@ -143,8 +140,6 @@ void Renderer::cleanup() {
 
   ImGui_ImplVulkan_Shutdown();
   vkDestroyDescriptorPool(_device->device(), _imguiPool, nullptr);
-  vkDestroyDescriptorSetLayout(_device->device(), _singleImageDescriptorLayout, nullptr);
-  vkDestroyDescriptorSetLayout(_device->device(), _gpuSceneDescriptorLayout, nullptr);
 
   _deletionQueue.flush();
 }
@@ -281,100 +276,6 @@ void Renderer::createImageViews() {
   }
 }
 
-// void Renderer::createRenderPass() {
-// VkAttachmentDescription colorAttachment = {};
-// colorAttachment.format = _format;
-// colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-// colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-// colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-// colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-// colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-// colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-// colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-//
-// VkAttachmentDescription depthAttachment = {};
-// depthAttachment.format = _device->findDepthFormat();
-// depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-// depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-// depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-// depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-// depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-// depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-// depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-//
-// VkAttachmentReference depthAttachmentRef = {};
-// depthAttachmentRef.attachment = 1;
-// depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-//
-// VkSubpassDependency dependency = {};
-// dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-// dependency.dstSubpass = 0;
-// dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-// VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT; dependency.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-// dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-// VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT; dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
-// VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-//
-// VkAttachmentReference colorAttachmentRef = {};
-// colorAttachmentRef.attachment = 0;
-// colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-//
-// VkSubpassDescription subpass = {};
-// subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-// subpass.colorAttachmentCount = 1;
-// subpass.pColorAttachments = &colorAttachmentRef;
-// subpass.pDepthStencilAttachment = &depthAttachmentRef;
-//
-// std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
-// VkRenderPassCreateInfo renderPassInfo = {VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO};
-// renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-// renderPassInfo.pAttachments = attachments.data();
-// renderPassInfo.subpassCount = 1;
-// renderPassInfo.pSubpasses = &subpass;
-// renderPassInfo.dependencyCount = 1;
-// renderPassInfo.pDependencies = &dependency;
-//
-// VK_CHECK(vkCreateRenderPass(_device->device(), &renderPassInfo, nullptr, &_renderPass));
-// }
-
-// void Renderer::createDepthResources() {
-// VkFormat depthFormat = _device->findDepthFormat();
-//
-// _device->createImage(_extent.width, _extent.height, 1, depthFormat, VK_IMAGE_TILING_OPTIMAL,
-//                      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, _depthImage,
-//                      _depthAllocation);
-//
-// _depthImageView = _device->createImageView(_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, 1);
-//
-// _device->transitionImageLayout(_depthImage, depthFormat, VK_IMAGE_LAYOUT_UNDEFINED,
-//                                VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-//
-// _deletionQueue.push_back([&]() { vkDestroyImageView(_device->device(), _depthImageView, nullptr); });
-// _deletionQueue.push_back([&]() { vmaDestroyImage(_device->allocator(), _depthImage, _depthAllocation); });
-// }
-
-// void Renderer::createFramebuffers() {
-// _framebuffers.resize(_imageViews.size());
-// for (size_t i = 0; i < _imageViews.size(); i++) {
-//   std::array<VkImageView, 2> attachments = {_imageViews[i], _depthImageView};
-//
-//   VkFramebufferCreateInfo framebufferInfo{};
-//   framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-//   framebufferInfo.renderPass = _renderPass;
-//   framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-//   framebufferInfo.pAttachments = attachments.data();
-//   framebufferInfo.width = _extent.width;
-//   framebufferInfo.height = _extent.height;
-//   framebufferInfo.layers = 1;
-//
-//   VK_CHECK(vkCreateFramebuffer(_device->device(), &framebufferInfo, nullptr, &_framebuffers[i]));
-// }
-//
-// for (auto &framebuffer : _framebuffers) {
-//   _deletionQueue.push_back([&]() { vkDestroyFramebuffer(_device->device(), framebuffer, nullptr); });
-// }
-// }
-
 void Renderer::initializeCommands() {
   VkCommandPoolCreateInfo commandPoolInfo =
       init::commandPoolCreateInfo(_device->queueFamily(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
@@ -464,9 +365,7 @@ void Renderer::initializeSyncStructures() {
 
 void Renderer::initializeDescriptors() {
   Vector<core::DescriptorAllocator::PoolSizeRatio> sizes = {{VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1}};
-
   _globalDescriptorAllocator.initPool(_device->device(), 10, sizes);
-
   {
     core::DescriptorLayoutBuilder builder;
     _drawImageDescriptorLayout =
@@ -506,6 +405,8 @@ void Renderer::initializeDescriptors() {
   _deletionQueue.push_back([&]() {
     _globalDescriptorAllocator.destroyPool(_device->device());
     vkDestroyDescriptorSetLayout(_device->device(), _drawImageDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(_device->device(), _singleImageDescriptorLayout, nullptr);
+    vkDestroyDescriptorSetLayout(_device->device(), _gpuSceneDescriptorLayout, nullptr);
   });
 }
 
@@ -672,11 +573,6 @@ void Renderer::drawImgui(VkCommandBuffer commandBuffer, VkImageView target) {
   ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
   vkCmdEndRendering(commandBuffer);
-}
-
-void Renderer::setViewportAndScissor(VkCommandBuffer commandBuffer, VkViewport viewport, VkRect2D scissor) {
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 }
 
 bool Renderer::acquireNextImage(uint32_t *imageIndex) {

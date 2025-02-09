@@ -1,6 +1,8 @@
 #pragma once
 
 #include "core/compute_pipeline.h"
+#include "core/descriptor_allocator_growable.h"
+#include "core/descriptor_writer.h"
 #include "core/device.h"
 #include "core/mesh_loader.h"
 #include "core/window.h"
@@ -10,7 +12,38 @@
 #include "rendering/renderer.h"
 #include <slang-com-ptr.h>
 
+#include "gpu/gpu_object.h"
+
 namespace bisky {
+
+struct GLTFMetallicObject {
+  MaterialPipeline opaquePipeline;
+  MaterialPipeline transparentPipeline;
+  VkDescriptorSetLayout materialLayout;
+
+  struct MaterialConstants {
+    glm::vec4 colorFactors;
+    glm::vec4 metalRoughFactors;
+    glm::vec4 extra[14];
+  };
+
+  struct MaterialResources {
+    AllocatedImage colorImage;
+    VkSampler colorSampler;
+    AllocatedImage metalRoughImage;
+    VkSampler metalRoughSampler;
+    VkBuffer dataBuffer;
+    uint32_t dataOffset;
+  };
+
+  core::DescriptorWriter writer;
+
+  void build(Engine *engine);
+  void clear(VkDevice device);
+
+  MaterialInstance writeMaterial(VkDevice device, MaterialPass pass, const MaterialResources &resources,
+                                 core::DescriptorAllocatorGrowable &descriptorAllocator);
+};
 
 class Engine : public ICallbacks {
 public:

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "core/deletion_queue.h"
 #include "pch.h"
 
 namespace bisky {
