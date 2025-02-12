@@ -20,8 +20,8 @@
 
 #include "rendering/renderer.h"
 
-namespace bisky {
-namespace rendering {
+using namespace bisky;
+using namespace bisky::rendering;
 
 Renderer::Renderer(Pointer<core::Window> window, Pointer<core::Device> device, VkSwapchainKHR oldSwapchain)
     : _window(window), _device(device), _oldSwapchain(oldSwapchain) {
@@ -633,6 +633,3 @@ void Renderer::recreate() {
   createImageViews();
   initializeDescriptors();
 }
-
-} // namespace rendering
-} // namespace bisky

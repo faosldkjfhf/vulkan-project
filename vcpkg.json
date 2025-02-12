@@ -1,0 +1,10 @@
+{
+  "dependencies": [
+    "fastgltf",
+    "fmt",
+    "simdjson",
+    "vcpkg-cmake",
+    "vcpkg-cmake-config",
+    "shader-slang"
+  ]
+}

@@ -8,7 +8,6 @@
 #include "core/device.h"
 #include "core/immedate_submit.h"
 #include "core/mesh_loader.h"
-#include "core/model.h"
 #include "core/window.h"
 #include "gpu/gpu_mesh_buffers.h"
 #include "gpu/gpu_scene_data.h"
