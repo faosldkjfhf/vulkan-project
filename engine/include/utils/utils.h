@@ -9,7 +9,6 @@
 #include <fstream>
 #include <slang-com-ptr.h>
 #include <span>
-#include <vulkan/vulkan_core.h>
 
 namespace bisky {
 namespace utils {

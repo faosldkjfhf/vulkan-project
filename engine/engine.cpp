@@ -22,7 +22,6 @@ void Engine::initialize() {
   _window = std::make_shared<core::Window>(800, 800, "Bisky Engine", this);
   _device = std::make_shared<core::Device>(_window);
   _renderer = std::make_shared<rendering::Renderer>(_window, _device);
-  // _computePipeline = std::make_shared<core::ComputePipeline>(_window, _device, _renderer);
 
   ComputeEffect gradient = {};
   ComputeEffect sky = {};

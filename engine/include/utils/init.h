@@ -3,7 +3,6 @@
 #include "pch.h"
 #include <slang-com-ptr.h>
 #include <slang.h>
-#include <vulkan/vulkan_core.h>
 
 namespace init {
 
